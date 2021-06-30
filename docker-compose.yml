@@ -1,0 +1,12 @@
+version: '3.7'
+services:
+  decap:
+    restart: always
+    build:
+      context: .
+    image: <docker registry>/decap:latest
+    init: true
+    environment:
+      - TZ=Europe/Copenhagen
+    ports:
+      - 4531:4531
