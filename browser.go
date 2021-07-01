@@ -64,7 +64,7 @@ func allocateSessions() {
 				continue
 			}
 			// create a new window and return it's first tab
-			w := createWindow()
+			w := createWindow(id)
 			windowReply <- w.session
 			w.last = time.Now()
 			windows[w.id] = w
@@ -88,13 +88,17 @@ func allocateSessions() {
 	}
 }
 
-func createWindow() window {
+func createWindow(id string) window {
 	ctx, cancel := chromedp.NewExecAllocator(
 		context.Background(),
 	)
 	var w window
 	w.cancel = cancel
-	w.id = createSessionID()
+	if len(id) < 8 {
+		w.id = createSessionID()
+	} else {
+		w.id = id
+	}
 
 	// create a persistent dummy tab to keep the window open
 	w.ctx, _ = chromedp.NewContext(ctx)
