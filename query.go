@@ -44,16 +44,16 @@ type QueryBlock struct {
 }
 
 type Query struct {
+	Blocks           []QueryBlock `json:"query"`
 	ForwardUserAgent bool         `json:"forward_user_agent"`
 	RenderDelayRaw   string       `json:"global_render_delay"`
 	ReuseTab         bool         `json:"reuse_tab"`
 	ReuseWindow      bool         `json:"reuse_window"`
-	Blocks           []QueryBlock `json:"query"`
+	SessionID        string       `json:"sessionid"`
 	newTab           bool
 	pos              int
 	renderDelay      time.Duration
 	res              Result
-	sessionid        string
 	userAgent        string
 	version          string
 }
@@ -65,8 +65,8 @@ func (q *Query) execute() error {
 	// set up tab
 
 	if q.newTab {
-		ses = loadWindow(q.sessionid)
-		q.sessionid = ses.id
+		ses = loadWindow(q.SessionID)
+		q.SessionID = ses.id
 		if q.ReuseWindow {
 			q.res.WindowId = ses.id
 		}
@@ -88,7 +88,7 @@ func (q *Query) execute() error {
 	var block QueryBlock
 	for q.pos, block = range q.Blocks {
 		fmt.Fprintf(os.Stderr, "%s Query %d/%d (session %s)\n",
-			time.Now().Format("[15:04:05]"), q.pos+1, len(q.Blocks), q.sessionid)
+			time.Now().Format("[15:04:05]"), q.pos+1, len(q.Blocks), q.SessionID)
 		err = chromedp.Run(ctx, block.cdpActions...)
 	}
 
@@ -224,7 +224,7 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		if err != nil {
 			return fmt.Errorf("listen: %s", err)
 		}
-		q.appendActions(listen(&q.sessionid, events...))
+		q.appendActions(listen(&q.SessionID, events...))
 
 	case "load_tab":
 		if err = xa.MustArgCount(1); err != nil {
