@@ -130,6 +130,12 @@ func (w *window) shutdown() {
 	w.cancel()
 }
 
+func click(sel string) chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		return chromedp.Click(sel, chromedp.NodeVisible).Do(ctx)
+	}
+}
+
 func enableLifecycleEvents() chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		err := page.Enable().Do(ctx)

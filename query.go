@@ -211,6 +211,11 @@ func (q *Query) parseAction(xa ExternalAction) error {
 
 	var err error
 	switch xa.Name() {
+	case "click":
+		if err = xa.MustArgCount(1); err != nil {
+			return err
+		}
+		q.appendActions(click(xa.Arg(1)))
 	case "eval":
 		if err = xa.MustArgCount(1); err != nil {
 			return err
