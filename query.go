@@ -36,20 +36,21 @@ type Result struct {
 
 type QueryBlock struct {
 	Actions    []ExternalAction `json:"actions"`
-	Repeat     string           `json:"repeat"`
+	Repeat     *int             `json:"repeat"`
+	While      *ExternalAction  `json:"while"`
 	cdpActions []chromedp.Action
+	cdpWhile   chromedp.Action
+	cont       bool
 	pos        int
-	repeat     bool
-	repeatFunc func() bool
 }
 
 type Query struct {
-	Blocks           []QueryBlock `json:"query"`
-	ForwardUserAgent bool         `json:"forward_user_agent"`
-	RenderDelayRaw   string       `json:"global_render_delay"`
-	ReuseTab         bool         `json:"reuse_tab"`
-	ReuseWindow      bool         `json:"reuse_window"`
-	SessionID        string       `json:"sessionid"`
+	Blocks           []*QueryBlock `json:"query"`
+	ForwardUserAgent bool          `json:"forward_user_agent"`
+	RenderDelayRaw   string        `json:"global_render_delay"`
+	ReuseTab         bool          `json:"reuse_tab"`
+	ReuseWindow      bool          `json:"reuse_window"`
+	SessionID        string        `json:"sessionid"`
 	newTab           bool
 	pos              int
 	renderDelay      time.Duration
@@ -85,11 +86,25 @@ func (q *Query) execute() error {
 	}
 
 	var err error
-	var block QueryBlock
+	var block *QueryBlock
 	for q.pos, block = range q.Blocks {
+
 		fmt.Fprintf(os.Stderr, "%s Query %d/%d (session %s)\n",
 			time.Now().Format("[15:04:05]"), q.pos+1, len(q.Blocks), q.SessionID)
-		err = chromedp.Run(ctx, block.cdpActions...)
+
+		for i := 0; i < *block.Repeat; i++ {
+			err = block.cdpWhile.Do(ctx)
+			if err != nil {
+				return err
+			}
+			if !block.cont {
+				break
+			}
+			err = chromedp.Run(ctx, block.cdpActions...)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return err
@@ -156,7 +171,7 @@ func (q *Query) parseQueryBlocks() error {
 	q.res.Out = make([][]string, len(q.Blocks))
 
 	var err error
-	var block QueryBlock
+	var block *QueryBlock
 	for q.pos, block = range q.Blocks {
 
 		// ensure non-nil empty return slices in JSON response
@@ -176,13 +191,13 @@ func (q *Query) parseQueryBlocks() error {
 			}
 		}
 
-		if len(block.Repeat) == 0 {
-			q.Blocks[q.pos].repeat = false
-			q.Blocks[q.pos].repeatFunc = nil
-		} else {
-			q.Blocks[q.pos].repeat = true
-			return fmt.Errorf("query[...].repeat is not implementet, must be \"\"")
+		if err = q.parseRepeat(); err != nil {
+			return fmt.Errorf("query[%d].repeat: %s", q.pos, err)
 		}
+		if err = q.parseWhile(block.While); err != nil {
+			return fmt.Errorf("query[%d].while: %s", q.pos, err)
+		}
+
 	}
 
 	return nil
@@ -199,17 +214,51 @@ func (q *Query) hasListeningEvents() bool {
 	return false
 }
 
-func (q *Query) parseAction(xa ExternalAction) error {
-	if xa.Name() == "" {
-		return fmt.Errorf("[0] must contain the name of an action")
+func (q *Query) parseRepeat() error {
+	block := q.Blocks[q.pos]
+	if block.Repeat == nil {
+		var defaultRepeat = 1
+		block.Repeat = &defaultRepeat
 	}
-	for i, arg := range xa.Args() {
-		if arg == "" {
-			return fmt.Errorf("[%d] must contain a non-empty argument", i+1)
-		}
+	if *block.Repeat < 0 {
+		return fmt.Errorf("negative value (%d) not allowed", *block.Repeat)
+	}
+	return nil
+}
+
+func (q *Query) parseWhile(xa *ExternalAction) error {
+	block := q.Blocks[q.pos]
+
+	if xa == nil {
+		block.cdpWhile = defaultWhile(&block.cont)
+		return nil
 	}
 
 	var err error
+	if err = xa.MustBeNonEmpty(); err != nil {
+		return err
+	}
+
+	switch xa.Name() {
+	case "element_exists":
+		if err = xa.MustArgCount(1); err != nil {
+			return err
+		}
+		block.cdpWhile = elementExists(xa.Arg(1), &block.cont)
+
+	default:
+		return fmt.Errorf("unknown while action \"%s\"", xa.Name())
+	}
+
+	return nil
+}
+
+func (q *Query) parseAction(xa ExternalAction) error {
+	var err error
+	if err = xa.MustBeNonEmpty(); err != nil {
+		return err
+	}
+
 	switch xa.Name() {
 	case "click":
 		if err = xa.MustArgCount(1); err != nil {
@@ -313,7 +362,7 @@ func validEvent(event string) bool {
 }
 
 func (q *Query) appendActions(actions ...chromedp.Action) {
-	block := &q.Blocks[q.pos]
+	block := q.Blocks[q.pos]
 	block.cdpActions = append(block.cdpActions, actions...)
 }
 
@@ -360,6 +409,18 @@ func (xa ExternalAction) MustArgCount(ns ...int) error {
 		}
 		seq := strings.ReplaceAll(strings.Trim(fmt.Sprint(ns[:len(ns)-1]), "[]"), " ", ", ")
 		return fmt.Errorf("%s: needs %s or %d arguments", xa.Name(), seq, ns[len(ns)-1])
+	}
+	return nil
+}
+
+func (xa ExternalAction) MustBeNonEmpty() error {
+	if xa.Name() == "" {
+		return fmt.Errorf("[0] must contain the name of an action")
+	}
+	for i, arg := range xa.Args() {
+		if arg == "" {
+			return fmt.Errorf("[%d] must contain a non-empty argument", i+1)
+		}
 	}
 	return nil
 }

@@ -136,6 +136,22 @@ func click(sel string) chromedp.ActionFunc {
 	}
 }
 
+func elementExists(sel string, res *bool) chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		var nodes []*cdp.Node
+		err := chromedp.Run(ctx, chromedp.Nodes(sel, &nodes, chromedp.AtLeast(0)))
+		*res = len(nodes) > 0
+		return err
+	}
+}
+
+func defaultWhile(res *bool) chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		*res = true
+		return nil
+	}
+}
+
 func enableLifecycleEvents() chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		err := page.Enable().Do(ctx)
