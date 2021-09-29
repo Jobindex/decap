@@ -14,8 +14,8 @@ import (
 const (
 	browsePath  = "/api/browse/"
 	DefaultPort = 4531
-	minAPI      = "v0.6"
-	nextAPI     = "v0.7"
+	minAPI      = "v0.7"
+	nextAPI     = "v0.8"
 )
 
 var (
