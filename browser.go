@@ -15,13 +15,15 @@ import (
 
 var (
 	windowClose = make(chan string)
-	windowQuery = make(chan string)
+	windowQuery = make(chan session)
 	windowReply = make(chan session)
 )
 
 type session struct {
-	ctx context.Context
-	id  string
+	ctx     context.Context
+	id      string
+	last    time.Time
+	timeout time.Duration
 }
 
 // TODO: Implement saving/loading of active tabs
@@ -29,17 +31,15 @@ type session struct {
 type tab struct {
 	session
 	cancel context.CancelFunc
-	last   time.Time
 }
 
 type window struct {
 	session
 	cancel context.CancelFunc
-	last   time.Time
 }
 
-func loadWindow(id string) session {
-	windowQuery <- id
+func loadWindow(id string, timeout time.Duration) session {
+	windowQuery <- session{id: id, timeout: timeout}
 	return <-windowReply
 }
 
@@ -48,25 +48,23 @@ func closeWindow(id string) {
 }
 
 func allocateSessions() {
-	const windowTimeout = 25 * time.Second
 	GCInterval := time.NewTicker(2 * time.Second)
 	rand.Seed(time.Now().UnixNano())
 
 	windows := make(map[string]window)
 	for {
 		select {
-		case id := <-windowQuery:
-			if w, ok := windows[id]; ok {
-				// reuse existing window
-				windowReply <- w.session
-				w.last = time.Now()
-				windows[w.id] = w
-				continue
+		case q := <-windowQuery:
+			w, ok := windows[q.id]
+			if !ok {
+				w = createWindow(q.id)
+				w.timeout = 30 * time.Second
 			}
-			// create a new window and return it's first tab
-			w := createWindow(id)
-			windowReply <- w.session
+			if q.timeout > w.timeout {
+				w.timeout = q.timeout
+			}
 			w.last = time.Now()
+			windowReply <- w.session
 			windows[w.id] = w
 
 		case id := <-windowClose:
@@ -74,9 +72,10 @@ func allocateSessions() {
 				w.shutdown()
 				delete(windows, id)
 			}
+
 		case <-GCInterval.C:
 			for _, w := range windows {
-				if elapsed := time.Since(w.last); elapsed > windowTimeout {
+				if elapsed := time.Since(w.last); elapsed > w.timeout {
 					fmt.Fprintf(os.Stderr,
 						"Window (session %s) was last requested %.1f seconds ago, closing it\n",
 						w.id, elapsed.Seconds())
@@ -112,6 +111,9 @@ func createSessionID() string {
 }
 
 func (ses session) createSiblingTabWithTimeout(timeout time.Duration) context.Context {
+	if timeout > ses.timeout {
+		ses = loadWindow(ses.id, timeout)
+	}
 	sibling, _ := chromedp.NewContext(ses.ctx)
 	sibling, _ = context.WithTimeout(sibling, timeout)
 	return sibling

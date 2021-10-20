@@ -16,6 +16,7 @@ import (
 
 const (
 	MaxRenderDelay = 10 * time.Second
+	MaxTimeout     = 120 * time.Second
 )
 
 var (
@@ -51,10 +52,12 @@ type Query struct {
 	ReuseTab         bool          `json:"reuse_tab"`
 	ReuseWindow      bool          `json:"reuse_window"`
 	SessionID        string        `json:"sessionid"`
+	TimeoutRaw       string        `json:"timeout"`
 	newTab           bool
 	pos              int
 	renderDelay      time.Duration
 	res              Result
+	timeout          time.Duration
 	userAgent        string
 	version          string
 }
@@ -64,15 +67,13 @@ func (q *Query) execute() error {
 	var ses session
 
 	// set up tab
-
 	if q.newTab {
-		ses = loadWindow(q.SessionID)
+		ses = loadWindow(q.SessionID, q.timeout)
 		q.SessionID = ses.id
 		if q.ReuseWindow {
 			q.res.WindowId = ses.id
 		}
-		// TODO: Allow passing tab-lifetime as a parameter
-		ctx = ses.createSiblingTabWithTimeout(20 * time.Second)
+		ctx = ses.createSiblingTabWithTimeout(q.timeout)
 		if q.ReuseTab {
 			// TODO: Implement tab-saving
 			// TODO: Save returned tab id in res
@@ -124,6 +125,10 @@ func (q *Query) parseRequest(body io.Reader) error {
 	if err != nil {
 		return err
 	}
+	err = q.parseTimeout()
+	if err != nil {
+		return err
+	}
 	err = q.parseQueryBlocks()
 	if err != nil {
 		return err
@@ -143,6 +148,22 @@ func (q *Query) parseRenderDelay() error {
 		delay = MaxRenderDelay
 	}
 	q.renderDelay = delay
+	return nil
+}
+
+func (q *Query) parseTimeout() error {
+	if q.TimeoutRaw == "" {
+		q.timeout = 20 * time.Second
+		return nil
+	}
+	timeout, err := time.ParseDuration(q.TimeoutRaw)
+	if err != nil {
+		return fmt.Errorf("invalid timeout: %s", err)
+	}
+	if timeout > MaxTimeout {
+		timeout = MaxTimeout
+	}
+	q.timeout = timeout
 	return nil
 }
 
