@@ -325,6 +325,16 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		}
 		q.appendActions(outerHTML(&q.res.Out[q.pos]))
 
+	case "scroll":
+		if err = xa.MustArgCount(0, 1); err != nil {
+			return err
+		}
+		if len(xa.Args()) == 0 {
+			q.appendActions(scrollToBottom())
+		} else {
+			q.appendActions(chromedp.ScrollIntoView(xa.Arg(1), chromedp.ByQuery))
+		}
+
 	case "sleep":
 		if err = xa.MustArgCount(0, 1); err != nil {
 			return err

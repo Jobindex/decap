@@ -184,6 +184,13 @@ func outerHTML(out *[]string) chromedp.ActionFunc {
 	}
 }
 
+func scrollToBottom() chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		cmd := `document.body.scrollTo(0,document.body.scrollHeight);`
+		return chromedp.Evaluate(cmd, nil).Do(ctx)
+	}
+}
+
 func listen(id *string, events ...string) chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		mustEvents := make(map[string]bool)
