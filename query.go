@@ -30,8 +30,8 @@ var (
 type Result struct {
 	Err      []string   `json:"err"`
 	Out      [][]string `json:"out"`
-	TabId    string     `json:"tab_id"`
-	WindowId string     `json:"window_id"`
+	TabID    string     `json:"tab_id"`
+	WindowID string     `json:"window_id"`
 }
 
 type QueryBlock struct {
@@ -70,7 +70,7 @@ func (q *Query) execute() error {
 		window = loadWindow(q.SessionID, q.timeout)
 		q.SessionID = window.id
 		if q.ReuseWindow {
-			q.res.WindowId = window.id
+			q.res.WindowID = window.id
 		}
 		tab = window.createSiblingTabWithTimeout(q.timeout)
 		if q.ReuseTab {
