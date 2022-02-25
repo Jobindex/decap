@@ -21,21 +21,10 @@ var (
 
 type session struct {
 	ctx     context.Context
+	cancel  context.CancelFunc
 	id      string
 	last    time.Time
 	timeout time.Duration
-}
-
-// TODO: Implement saving/loading of active tabs
-
-type tab struct {
-	session
-	cancel context.CancelFunc
-}
-
-type window struct {
-	session
-	cancel context.CancelFunc
 }
 
 func loadWindow(id string, timeout time.Duration) session {
@@ -51,7 +40,7 @@ func allocateSessions() {
 	GCInterval := time.NewTicker(2 * time.Second)
 	rand.Seed(time.Now().UnixNano())
 
-	windows := make(map[string]window)
+	windows := make(map[string]session)
 	for {
 		select {
 		case q := <-windowQuery:
@@ -64,7 +53,7 @@ func allocateSessions() {
 				w.timeout = q.timeout
 			}
 			w.last = time.Now()
-			windowReply <- w.session
+			windowReply <- w
 			windows[w.id] = w
 
 		case id := <-windowClose:
@@ -87,11 +76,11 @@ func allocateSessions() {
 	}
 }
 
-func createWindow(id string) window {
+func createWindow(id string) session {
 	ctx, cancel := chromedp.NewExecAllocator(
 		context.Background(),
 	)
-	var w window
+	var w session
 	w.cancel = cancel
 	if len(id) < 8 {
 		w.id = createSessionID()
@@ -110,26 +99,24 @@ func createSessionID() string {
 	return fmt.Sprintf("%08x", rand.Int63()&0xffffffff)
 }
 
-func (ses session) createSiblingTabWithTimeout(timeout time.Duration) context.Context {
+func (ses session) createSiblingTabWithTimeout(timeout time.Duration) session {
 	if timeout > ses.timeout {
 		ses = loadWindow(ses.id, timeout)
 	}
-	sibling, _ := chromedp.NewContext(ses.ctx)
-	sibling, _ = context.WithTimeout(sibling, timeout)
+	var sibling session
+	sibling.ctx, _ = chromedp.NewContext(ses.ctx)
+	sibling.ctx, _ = context.WithTimeout(sibling.ctx, timeout)
+	sibling.cancel = context.CancelFunc(func() { chromedp.Run(sibling.ctx, page.Close()) })
 	return sibling
 }
 
-func closeSiblingTab(ctx context.Context) {
-	chromedp.Run(ctx, page.Close())
-}
-
-func (w *window) shutdown() {
-	if w.cancel == nil {
-		fmt.Fprintf(os.Stderr,
-			"Expected non-nil cancelFunc when shutting down window (session %s)\n", w.id)
+func (ses *session) shutdown() {
+	if ses.cancel == nil {
+		msg := "Expected non-nil cancelFunc when shutting down tab/window (session %s)\n"
+		fmt.Fprintf(os.Stderr, msg, ses.id)
 		return
 	}
-	w.cancel()
+	ses.cancel()
 }
 
 func click(sel string) chromedp.ActionFunc {

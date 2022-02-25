@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -63,23 +62,23 @@ type Query struct {
 }
 
 func (q *Query) execute() error {
-	var ctx context.Context
-	var ses session
+	var tab session
+	var window session
 
 	// set up tab
 	if q.newTab {
-		ses = loadWindow(q.SessionID, q.timeout)
-		q.SessionID = ses.id
+		window = loadWindow(q.SessionID, q.timeout)
+		q.SessionID = window.id
 		if q.ReuseWindow {
-			q.res.WindowId = ses.id
+			q.res.WindowId = window.id
 		}
-		ctx = ses.createSiblingTabWithTimeout(q.timeout)
+		tab = window.createSiblingTabWithTimeout(q.timeout)
 		if q.ReuseTab {
 			// TODO: Implement tab-saving
 			// TODO: Save returned tab id in res
 			return fmt.Errorf("reuse_tab isn't implemented")
 		} else {
-			defer closeSiblingTab(ctx)
+			defer tab.cancel()
 		}
 
 	} else {
@@ -94,14 +93,14 @@ func (q *Query) execute() error {
 			time.Now().Format("[15:04:05]"), q.pos+1, len(q.Blocks), q.SessionID)
 
 		for i := 0; i < *block.Repeat; i++ {
-			err = block.cdpWhile.Do(ctx)
+			err = block.cdpWhile.Do(tab.ctx)
 			if err != nil {
 				return err
 			}
 			if !block.cont {
 				break
 			}
-			err = chromedp.Run(ctx, block.cdpActions...)
+			err = chromedp.Run(tab.ctx, block.cdpActions...)
 			if err != nil {
 				return err
 			}
