@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
@@ -14,9 +15,13 @@ import (
 )
 
 var (
-	windowClose = make(chan string)
-	windowQuery = make(chan session)
-	windowReply = make(chan session)
+	tabLoadQuery = make(chan string)
+	tabLoadReply = make(chan session)
+	tabSave      = make(chan session)
+	windowClose  = make(chan string)
+	windowQuery  = make(chan session)
+	windowReply  = make(chan session)
+	tabRegexp    = regexp.MustCompile(`^([[:xdigit:]]{8,})_([[:xdigit:]]{8})$`)
 )
 
 type session struct {
@@ -36,11 +41,22 @@ func closeWindow(id string) {
 	windowClose <- id
 }
 
+func loadTab(id string) session {
+	tabLoadQuery <- id
+	return <-tabLoadReply
+}
+
+func (ses session) saveTab() {
+	tabSave <- ses
+}
+
 func allocateSessions() {
 	GCInterval := time.NewTicker(2 * time.Second)
 	rand.Seed(time.Now().UnixNano())
 
 	windows := make(map[string]session)
+	tabs := make(map[string]session)
+
 	for {
 		select {
 		case q := <-windowQuery:
@@ -62,6 +78,25 @@ func allocateSessions() {
 				delete(windows, id)
 			}
 
+		case t := <-tabSave:
+			tabs[t.id] = t
+
+		case id := <-tabLoadQuery:
+			tabLoadReply <- tabs[id]
+			delete(tabs, id)
+
+			prefix, _, err := parseTabID(id)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Tab ID parse error: %s\n", err)
+				break
+			}
+			if w, ok := windows[prefix]; ok {
+				w.last = time.Now()
+				windows[prefix] = w
+			} else {
+				fmt.Fprintf(os.Stderr, "Tab ID (%s) didn't match any window\n", id)
+			}
+
 		case <-GCInterval.C:
 			for _, w := range windows {
 				if elapsed := time.Since(w.last); elapsed > w.timeout {
@@ -69,11 +104,38 @@ func allocateSessions() {
 						"Window (session %s) was last requested %.1f seconds ago, closing it\n",
 						w.id, elapsed.Seconds())
 					w.shutdown()
-					delete(windows, w.id)
+					msg := removeWindow(w.id, &windows, &tabs)
+					fmt.Fprintln(os.Stderr, msg)
 				}
 			}
 		}
 	}
+}
+
+func parseTabID(id string) (prefix, suffix string, err error) {
+	m := tabRegexp.FindStringSubmatch(id)
+	if len(m) < 3 {
+		err = fmt.Errorf(`illegal tab ID format "%s"`, id)
+		return
+	}
+	prefix, suffix = m[1], m[2]
+	return
+}
+
+func removeWindow(id string, windows, tabs *map[string]session) string {
+	delete(*windows, id)
+	var tabLog []string
+	for tid := range *tabs {
+		prefix, suffix, _ := parseTabID(tid)
+		if prefix == id {
+			tabLog = append(tabLog, fmt.Sprintf("_%s", suffix))
+			delete(*tabs, tid)
+		}
+	}
+	if len(tabLog) == 0 {
+		return fmt.Sprintf("Deleting window %s", id)
+	}
+	return fmt.Sprintf("Deleting window %s including tabs %v", id, tabLog)
 }
 
 func createWindow(id string) session {
@@ -103,10 +165,13 @@ func (ses session) createSiblingTabWithTimeout(timeout time.Duration) session {
 	if timeout > ses.timeout {
 		ses = loadWindow(ses.id, timeout)
 	}
-	var sibling session
+	id := fmt.Sprintf("%s_%s", ses.id, createSessionID())
+	sibling := session{id: id, timeout: timeout}
 	sibling.ctx, _ = chromedp.NewContext(ses.ctx)
 	sibling.ctx, _ = context.WithTimeout(sibling.ctx, timeout)
-	sibling.cancel = context.CancelFunc(func() { chromedp.Run(sibling.ctx, page.Close()) })
+	sibling.cancel = context.CancelFunc(func() {
+		chromedp.Run(sibling.ctx, page.Close())
+	})
 	return sibling
 }
 

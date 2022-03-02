@@ -52,7 +52,7 @@ type Query struct {
 	ReuseWindow      bool          `json:"reuse_window"`
 	SessionID        string        `json:"sessionid"`
 	TimeoutRaw       string        `json:"timeout"`
-	newTab           bool
+	oldTabID         string
 	pos              int
 	renderDelay      time.Duration
 	res              Result
@@ -63,26 +63,25 @@ type Query struct {
 
 func (q *Query) execute() error {
 	var tab session
-	var window session
 
-	// set up tab
-	if q.newTab {
-		window = loadWindow(q.SessionID, q.timeout)
+	if q.newTab() {
+		window := loadWindow(q.SessionID, q.timeout)
 		q.SessionID = window.id
-		if q.ReuseWindow {
-			q.res.WindowID = window.id
-		}
 		tab = window.createSiblingTabWithTimeout(q.timeout)
-		if q.ReuseTab {
-			// TODO: Implement tab-saving
-			// TODO: Save returned tab id in res
-			return fmt.Errorf("reuse_tab isn't implemented")
-		} else {
-			defer tab.cancel()
-		}
-
 	} else {
-		return fmt.Errorf("tab-resuming is not implementet")
+		tab = loadTab(q.oldTabID)
+		if tab.id != q.oldTabID {
+			return fmt.Errorf("tab with id \"%s\" doesn't exist", q.oldTabID)
+		}
+	}
+	if q.ReuseWindow {
+		q.res.WindowID = q.SessionID
+	}
+	if q.ReuseTab {
+		q.res.TabID = tab.id
+		defer tab.saveTab()
+	} else {
+		defer tab.shutdown()
 	}
 
 	var err error
@@ -171,16 +170,34 @@ func (q *Query) parseQueryBlocks() error {
 	if len(q.Blocks) == 0 {
 		return fmt.Errorf("query[0] must contain at least one action block")
 	}
-	if len(q.Blocks[0].Actions) < 2 {
-		return fmt.Errorf("query[0].actions[0] must contain at least two actions")
+	if len(q.Blocks[0].Actions) < 1 {
+		return fmt.Errorf("query[0].actions must contain at least one action")
 	}
 	switch q.Blocks[0].Actions[0].Name() {
 	case "load_tab":
-		q.newTab = false
+		q.oldTabID = q.Blocks[0].Actions[0].Arg(1)
+		q.Blocks[0].Actions = q.Blocks[0].Actions[1:]
+		prefix, _, err := parseTabID(q.oldTabID)
+		if err != nil {
+			return fmt.Errorf("load_tab: %s", err)
+		}
+		switch q.SessionID {
+		case "":
+			q.SessionID = prefix
+			fmt.Fprintf(os.Stderr, "Request want tab %s, inferring window %s\n",
+				q.oldTabID, q.SessionID)
+		case prefix:
+			fmt.Fprintf(os.Stderr, "Request want tab %s and window %s\n", q.oldTabID, q.SessionID)
+		default:
+			return fmt.Errorf("tab %s is not part of window session %s", q.oldTabID, q.SessionID)
+		}
 	case "navigate":
-		q.newTab = true
+		if len(q.Blocks[0].Actions) < 2 {
+			msg := `query[0].actions must contain at least one other action besides "navigate"`
+			return fmt.Errorf(msg)
+		}
 	default:
-		return fmt.Errorf("query[0].actions[0] must begin with either \"load_tab\" or \"navigate\"")
+		return fmt.Errorf(`query[0].actions[0] must begin with either "load_tab" or "navigate"`)
 	}
 
 	if q.hasListeningEvents() {
@@ -198,7 +215,7 @@ func (q *Query) parseQueryBlocks() error {
 		// q.res.Err[q.pos] = make([]string, 0)
 		q.res.Out[q.pos] = make([]string, 0)
 
-		if len(block.Actions) == 0 {
+		if len(block.Actions) == 0 && q.newTab() {
 			return fmt.Errorf("query[%d].actions can't be empty", q.pos)
 		}
 		const efmt = "query[%d].actions[%v]: %s"
@@ -304,8 +321,7 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		if err = xa.MustArgCount(1); err != nil {
 			return err
 		}
-		// TODO: Append the appropriate action
-		return fmt.Errorf("load_tab not implemented")
+		return fmt.Errorf("load_tab must be the first action of the first action block")
 
 	case "navigate":
 		if err = xa.MustArgCount(1); err != nil {
@@ -394,6 +410,10 @@ func validEvent(event string) bool {
 func (q *Query) appendActions(actions ...chromedp.Action) {
 	block := q.Blocks[q.pos]
 	block.cdpActions = append(block.cdpActions, actions...)
+}
+
+func (q *Query) newTab() bool {
+	return q.oldTabID == ""
 }
 
 type ExternalAction []string
