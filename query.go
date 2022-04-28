@@ -282,6 +282,15 @@ func (q *Query) parseWhile(xa *ExternalAction) error {
 			return err
 		}
 		block.cdpWhile = elementExists(xa.Arg(1), &block.cont)
+	case "element_visible":
+		if err = xa.MustArgCount(1); err != nil {
+			return err
+		}
+		sel := xa.Arg(1)
+		if strings.Contains(sel, "'") {
+			return fmt.Errorf(`element_visible selector contains "'"`)
+		}
+		block.cdpWhile = elementVisible(xa.Arg(1), &block.cont)
 
 	default:
 		return fmt.Errorf("unknown while action \"%s\"", xa.Name())

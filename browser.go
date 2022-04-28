@@ -199,6 +199,15 @@ func elementExists(sel string, res *bool) chromedp.ActionFunc {
 	}
 }
 
+func elementVisible(sel string, res *bool) chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		findElem := fmt.Sprintf("var e = document.querySelector('%s')", sel)
+		isVisible := "!!(e.offsetWidth || e.offsetHeight || e.getClientRects().length)"
+		cmd := fmt.Sprintf("%s; e ? %s : false;", findElem, isVisible)
+		return chromedp.Run(ctx, chromedp.Evaluate(cmd, res))
+	}
+}
+
 func defaultWhile(res *bool) chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		*res = true
