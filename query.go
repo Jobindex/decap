@@ -277,6 +277,7 @@ func (q *Query) parseWhile(xa *ExternalAction) error {
 	}
 
 	switch xa.Name() {
+
 	case "element_exists":
 		if err = xa.MustArgCount(1); err != nil {
 			return err
@@ -306,11 +307,13 @@ func (q *Query) parseAction(xa ExternalAction) error {
 	}
 
 	switch xa.Name() {
+
 	case "click":
 		if err = xa.MustArgCount(1); err != nil {
 			return err
 		}
 		q.appendActions(click(xa.Arg(1)))
+
 	case "eval":
 		if err = xa.MustArgCount(1); err != nil {
 			return err
