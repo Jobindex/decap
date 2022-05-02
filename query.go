@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,6 +47,7 @@ type QueryBlock struct {
 
 type Query struct {
 	Blocks           []*QueryBlock `json:"query"`
+	EmulateViewport  []string      `json:"emulate_viewport"`
 	ForwardUserAgent bool          `json:"forward_user_agent"`
 	RenderDelayRaw   string        `json:"global_render_delay"`
 	ReuseTab         bool          `json:"reuse_tab"`
@@ -120,6 +122,10 @@ func (q *Query) parseRequest(body io.Reader) error {
 		return fmt.Errorf("value \"true\" is not supported for init.forward_user_agent")
 	}
 
+	err = q.parseEmulateViewport()
+	if err != nil {
+		return err
+	}
 	err = q.parseRenderDelay()
 	if err != nil {
 		return err
@@ -132,6 +138,42 @@ func (q *Query) parseRequest(body io.Reader) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (q *Query) parseEmulateViewport() error {
+	switch len(q.EmulateViewport) {
+	case 0:
+		return nil
+	case 1:
+		return fmt.Errorf("emulate_viewport: width arg has no matching height arg")
+	}
+
+	var height, width int64
+	var err error
+	width, err = strconv.ParseInt(q.EmulateViewport[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("emulate_viewport[0]: width must be an integer")
+	}
+	height, err = strconv.ParseInt(q.EmulateViewport[1], 10, 64)
+	if err != nil {
+		return fmt.Errorf("emulate_viewport[1]: width must be an integer")
+	}
+
+	var options []chromedp.EmulateViewportOption
+	for i, option := range q.EmulateViewport[2:] {
+		switch option {
+		case "landscape":
+			options = append(options, chromedp.EmulateLandscape)
+		case "mobile":
+			options = append(options, chromedp.EmulateMobile)
+		case "portrait":
+			options = append(options, chromedp.EmulatePortrait)
+		default:
+			return fmt.Errorf(`emulate_viewport[%d]: unknown option "%s"`, i+2, option)
+		}
+	}
+	q.appendActions(chromedp.EmulateViewport(width, height, options...))
 	return nil
 }
 
