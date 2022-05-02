@@ -245,6 +245,32 @@ func outerHTML(out *[]string) chromedp.ActionFunc {
 	}
 }
 
+func screenshot(args map[string]string, buf *[]byte) chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		var err error
+		if sel, ok := args["element"]; ok {
+			if padding, ok := args["padding"]; ok {
+				cmd := fmt.Sprintf(
+					"document.querySelector('%s').setAttribute('style', 'padding:%s')",
+					sel, padding,
+				)
+				err = chromedp.Run(ctx, chromedp.Evaluate(cmd, nil))
+				if err != nil {
+					return fmt.Errorf("failed to add padding: %s", err)
+				}
+			}
+			err = chromedp.Run(ctx, chromedp.Screenshot(sel, buf, chromedp.NodeVisible))
+		} else {
+			err = chromedp.Run(ctx, chromedp.FullScreenshot(buf, 100))
+		}
+		if err != nil {
+			return fmt.Errorf("failed to capture screenshot: %s", err)
+		}
+
+		return nil
+	}
+}
+
 func scrollToBottom() chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		cmd := `document.body.scrollTo(0,document.body.scrollHeight);`

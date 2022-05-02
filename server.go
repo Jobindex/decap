@@ -104,14 +104,26 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 
 	// send response body
 
+	if q.rbuf != nil {
+		w.Header().Set("Content-Type", "image/png")
+		_, err := w.Write(q.rbuf)
+		if err != nil {
+			status := http.StatusInternalServerError
+			msg := fmt.Sprintf("%s: %s",
+				http.StatusText(status), "Couldn't write response bytes")
+			http.Error(w, msg, status)
+		}
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(&q.res)
 	if err != nil {
 		status := http.StatusInternalServerError
 		msg := fmt.Sprintf("%s: %s", http.StatusText(status), "Couldn't encode response")
 		http.Error(w, msg, status)
-		return
 	}
+	return
 }
 
 func deprecationHandler(w http.ResponseWriter, req *http.Request) {

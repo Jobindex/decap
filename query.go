@@ -56,6 +56,7 @@ type Query struct {
 	pos              int
 	renderDelay      time.Duration
 	res              Result
+	rbuf             []byte // if non-nil, return these bytes instead of res
 	timeout          time.Duration
 	userAgent        string
 	version          string
@@ -352,6 +353,21 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		}
 		q.appendActions(outerHTML(&q.res.Out[q.pos]))
 
+	case "screenshot":
+		args, err := xa.NamedArgs(1)
+		if err != nil {
+			return err
+		}
+		element, ok := args["element"]
+		if ok && strings.Contains(element, "'") {
+			return fmt.Errorf(`element contains "'"`)
+		}
+		padding, ok := args["padding"]
+		if ok && strings.Contains(padding, "'") {
+			return fmt.Errorf(`padding contains "'"`)
+		}
+		q.appendActions(screenshot(args, &q.rbuf))
+
 	case "scroll":
 		if err = xa.MustArgCount(0, 1); err != nil {
 			return err
@@ -446,6 +462,21 @@ func (xa ExternalAction) Args() []string {
 
 func (xa ExternalAction) Name() string {
 	return xa.Arg(0)
+}
+
+func (xa ExternalAction) NamedArgs(offset int) (map[string]string, error) {
+	if len(xa) < offset {
+		return nil, fmt.Errorf("%s: offset larger than arg list", xa.Name())
+	}
+	xb := xa[offset:]
+	if len(xb)%2 != 0 {
+		return nil, fmt.Errorf("%s: expected even number of args", xa.Name())
+	}
+	args := make(map[string]string)
+	for i := 0; i+1 < len(xb); i += 2 {
+		args[xb[i]] = xb[i+1]
+	}
+	return args, nil
 }
 
 func (xa ExternalAction) MustArgCount(ns ...int) error {
