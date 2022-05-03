@@ -395,6 +395,17 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		}
 		q.appendActions(outerHTML(&q.res.Out[q.pos]))
 
+	case "remove":
+		if len(xa.Args()) == 0 {
+			return fmt.Errorf("remove: expected at least one argument")
+		}
+		for i, sel := range xa.Args() {
+			if strings.Contains(sel, "'") {
+				return fmt.Errorf(`remove[%d]: selector contains "'"`, i)
+			}
+		}
+		q.appendActions(removeElements(strings.Join(xa.Args(), ", ")))
+
 	case "screenshot":
 		args, err := xa.NamedArgs(1)
 		if err != nil {
