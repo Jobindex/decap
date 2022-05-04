@@ -1,4 +1,4 @@
-module decap
+module github.com/jobindex/decap
 
 go 1.17
 
