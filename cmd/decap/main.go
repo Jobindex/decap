@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/jobindex/decap"
 )
 
 const (
@@ -30,7 +32,7 @@ func init() {
 func main() {
 	flag.Parse()
 
-	go allocateSessions()
+	go decap.AllocateSessions()
 
 	var handler http.Handler
 	http.HandleFunc("/", http.NotFound)
@@ -80,10 +82,8 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var q Query
-	q.version = version
-	q.userAgent = req.UserAgent()
-	err = q.parseRequest(req.Body)
+	var q decap.Query
+	err = q.ParseRequest(req.Body)
 	if err != nil {
 		status := http.StatusBadRequest
 		msg := fmt.Sprintf("%s: %s", http.StatusText(status), err)
@@ -93,7 +93,8 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 
 	// execute query
 
-	err = q.execute()
+	var res *decap.Result
+	res, err = q.Execute()
 	if err != nil {
 		// TODO: Propagate HTTP status properly
 		status := http.StatusInternalServerError
@@ -103,27 +104,27 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// send response body
-
-	if q.rbuf != nil {
+	switch res.Type() {
+	case "json":
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(res)
+		if err != nil {
+			status := http.StatusInternalServerError
+			msg := fmt.Sprintf("%s: %s", http.StatusText(status), "Couldn't encode response")
+			http.Error(w, msg, status)
+			return
+		}
+	case "png":
 		w.Header().Set("Content-Type", "image/png")
-		_, err := w.Write(q.rbuf)
+		_, err := w.Write(res.ImgBuffer())
 		if err != nil {
 			status := http.StatusInternalServerError
 			msg := fmt.Sprintf("%s: %s",
 				http.StatusText(status), "Couldn't write response bytes")
 			http.Error(w, msg, status)
+			return
 		}
-		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(&q.res)
-	if err != nil {
-		status := http.StatusInternalServerError
-		msg := fmt.Sprintf("%s: %s", http.StatusText(status), "Couldn't encode response")
-		http.Error(w, msg, status)
-	}
-	return
 }
 
 func deprecationHandler(w http.ResponseWriter, req *http.Request) {

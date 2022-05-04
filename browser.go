@@ -1,4 +1,4 @@
-package main
+package decap
 
 import (
 	"context"
@@ -50,7 +50,7 @@ func (ses session) saveTab() {
 	tabSave <- ses
 }
 
-func allocateSessions() {
+func AllocateSessions() {
 	GCInterval := time.NewTicker(2 * time.Second)
 	rand.Seed(time.Now().UnixNano())
 

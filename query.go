@@ -1,4 +1,4 @@
-package main
+package decap
 
 import (
 	"encoding/json"
@@ -33,6 +33,18 @@ type Result struct {
 	Out      [][]string `json:"out"`
 	TabID    string     `json:"tab_id"`
 	WindowID string     `json:"window_id"`
+	img      []byte
+}
+
+func (res *Result) Type() string {
+	if len(res.img) != 0 {
+		return "png"
+	}
+	return "json"
+}
+
+func (res *Result) ImgBuffer() []byte {
+	return res.img
 }
 
 type QueryBlock struct {
@@ -58,13 +70,10 @@ type Query struct {
 	pos              int
 	renderDelay      time.Duration
 	res              Result
-	rbuf             []byte // if non-nil, return these bytes instead of res
 	timeout          time.Duration
-	userAgent        string
-	version          string
 }
 
-func (q *Query) execute() error {
+func (q *Query) Execute() (*Result, error) {
 	var tab session
 
 	if q.newTab() {
@@ -74,7 +83,7 @@ func (q *Query) execute() error {
 	} else {
 		tab = loadTab(q.oldTabID)
 		if tab.id != q.oldTabID {
-			return fmt.Errorf("tab with id \"%s\" doesn't exist", q.oldTabID)
+			return nil, fmt.Errorf("tab with id \"%s\" doesn't exist", q.oldTabID)
 		}
 	}
 	if q.ReuseWindow {
@@ -97,22 +106,22 @@ func (q *Query) execute() error {
 		for i := 0; i < *block.Repeat; i++ {
 			err = block.cdpWhile.Do(tab.ctx)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if !block.cont {
 				break
 			}
 			err = chromedp.Run(tab.ctx, block.cdpActions...)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
 
-	return err
+	return &q.res, nil
 }
 
-func (q *Query) parseRequest(body io.Reader) error {
+func (q *Query) ParseRequest(body io.Reader) error {
 	err := json.NewDecoder(body).Decode(&q)
 	if err != nil {
 		return fmt.Errorf("JSON parsing error: %s", err)
@@ -419,7 +428,7 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		if ok && strings.Contains(padding, "'") {
 			return fmt.Errorf(`padding contains "'"`)
 		}
-		q.appendActions(screenshot(args, &q.rbuf))
+		q.appendActions(screenshot(args, &q.res.img))
 
 	case "scroll":
 		if err = xa.MustArgCount(0, 1); err != nil {
