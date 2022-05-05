@@ -1,0 +1,72 @@
+= Decap
+
+== Build
+
+=== Prerequisites (developer laptop)
+
+* https://go.dev/doc/install[Go compiler] (go1.18 or above)
+* Docker (18.06 or above)
+
+=== On laptop
+
+[source,shell]
+$ go build
+$ docker-compose build
+
+== Run locally
+
+[source,shell]
+$ ./cmd/decap/decap
+
+or via Docker
+
+[source,shell]
+$ docker-compose up -d
+
+== Deploy
+
+=== Prerequisites (deployment server)
+
+* Docker (18.06 or above)
+* Variant of docker-compose.yml configured for deployment (and without build
+  steps)
+** If there are multiple configurations, the filename should match the
+   deployment host
+
+=== On laptop
+
+[source,shell]
+$ docker login <docker registry>
+$ docker-compose push
+
+=== On server
+
+_(Perform docker login like above if needed.)_
+
+[source,shell]
+$ cd <main repo root>/conf/decap
+$ docker-compose -f docker-compose-<hostname>.yml pull
+$ docker-compose -f docker-compose-<hostname>.yml up -d
+
+== Maintenance and other arcana
+
+=== Update Decap dependencies to the newest version
+
+[source,shell]
+$ go get -u github.com/chromedp/chromedp
+
+=== Bypass Docker registry when deploying image to server
+
+When performing rapid successive Decap deployments using different Chromium
+binaries, we can avoid polluting the Docker registry with hundreds of megabytes
+of additional binary blobs by using `docker save` and `docker load`.
+
+==== On laptop (-> remote host)
+
+[source,shell]
+$ docker save <docker registry>/decap:latest | ssh <remote host> docker load
+
+==== On remote jump host (-> production host)
+
+[source,shell]
+$ docker save <docker registry>/decap:latest | ssh <more remote host> docker load
