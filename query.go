@@ -48,24 +48,24 @@ func (res *Result) ImgBuffer() []byte {
 }
 
 type QueryBlock struct {
-	Actions    []ExternalAction `json:"actions"`
-	Repeat     *int             `json:"repeat"`
-	While      *ExternalAction  `json:"while"`
+	Actions    []Action `json:"actions"`
+	Repeat     *int     `json:"repeat"`
+	While      *Action  `json:"while"`
 	cdpActions []chromedp.Action
 	cdpWhile   chromedp.Action
 	cont       bool
 	pos        int
 }
 
-type Query struct {
-	Blocks           []*QueryBlock `json:"query"`
+type Request struct {
+	Query            []*QueryBlock `json:"query"`
 	EmulateViewport  []string      `json:"emulate_viewport"`
 	ForwardUserAgent bool          `json:"forward_user_agent"`
-	RenderDelayRaw   string        `json:"global_render_delay"`
+	RenderDelay      string        `json:"global_render_delay"`
 	ReuseTab         bool          `json:"reuse_tab"`
 	ReuseWindow      bool          `json:"reuse_window"`
 	SessionID        string        `json:"sessionid"`
-	TimeoutRaw       string        `json:"timeout"`
+	Timeout          string        `json:"timeout"`
 	oldTabID         string
 	pos              int
 	renderDelay      time.Duration
@@ -73,24 +73,24 @@ type Query struct {
 	timeout          time.Duration
 }
 
-func (q *Query) Execute() (*Result, error) {
+func (r *Request) Execute() (*Result, error) {
 	var tab session
 
-	if q.newTab() {
-		window := loadWindow(q.SessionID, q.timeout)
-		q.SessionID = window.id
-		tab = window.createSiblingTabWithTimeout(q.timeout)
+	if r.newTab() {
+		window := loadWindow(r.SessionID, r.timeout)
+		r.SessionID = window.id
+		tab = window.createSiblingTabWithTimeout(r.timeout)
 	} else {
-		tab = loadTab(q.oldTabID)
-		if tab.id != q.oldTabID {
-			return nil, fmt.Errorf("tab with id \"%s\" doesn't exist", q.oldTabID)
+		tab = loadTab(r.oldTabID)
+		if tab.id != r.oldTabID {
+			return nil, fmt.Errorf("tab with id \"%s\" doesn't exist", r.oldTabID)
 		}
 	}
-	if q.ReuseWindow {
-		q.res.WindowID = q.SessionID
+	if r.ReuseWindow {
+		r.res.WindowID = r.SessionID
 	}
-	if q.ReuseTab {
-		q.res.TabID = tab.id
+	if r.ReuseTab {
+		r.res.TabID = tab.id
 		defer tab.saveTab()
 	} else {
 		defer tab.shutdown()
@@ -98,10 +98,10 @@ func (q *Query) Execute() (*Result, error) {
 
 	var err error
 	var block *QueryBlock
-	for q.pos, block = range q.Blocks {
+	for r.pos, block = range r.Query {
 
 		fmt.Fprintf(os.Stderr, "%s Query %d/%d (session %s)\n",
-			time.Now().Format("[15:04:05]"), q.pos+1, len(q.Blocks), q.SessionID)
+			time.Now().Format("[15:04:05]"), r.pos+1, len(r.Query), r.SessionID)
 
 		for i := 0; i < *block.Repeat; i++ {
 			err = block.cdpWhile.Do(tab.ctx)
@@ -118,40 +118,40 @@ func (q *Query) Execute() (*Result, error) {
 		}
 	}
 
-	return &q.res, nil
+	return &r.res, nil
 }
 
-func (q *Query) ParseRequest(body io.Reader) error {
-	err := json.NewDecoder(body).Decode(&q)
+func (r *Request) ParseRequest(body io.Reader) error {
+	err := json.NewDecoder(body).Decode(&r)
 	if err != nil {
 		return fmt.Errorf("JSON parsing error: %s", err)
 	}
-	if q.ForwardUserAgent {
+	if r.ForwardUserAgent {
 		// TODO: Implement user agent forwarding in execute()
 		return fmt.Errorf("value \"true\" is not supported for init.forward_user_agent")
 	}
 
-	err = q.parseEmulateViewport()
+	err = r.parseEmulateViewport()
 	if err != nil {
 		return err
 	}
-	err = q.parseRenderDelay()
+	err = r.parseRenderDelay()
 	if err != nil {
 		return err
 	}
-	err = q.parseTimeout()
+	err = r.parseTimeout()
 	if err != nil {
 		return err
 	}
-	err = q.parseQueryBlocks()
+	err = r.parseQueryBlocks()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (q *Query) parseEmulateViewport() error {
-	switch len(q.EmulateViewport) {
+func (r *Request) parseEmulateViewport() error {
+	switch len(r.EmulateViewport) {
 	case 0:
 		return nil
 	case 1:
@@ -160,17 +160,17 @@ func (q *Query) parseEmulateViewport() error {
 
 	var height, width int64
 	var err error
-	width, err = strconv.ParseInt(q.EmulateViewport[0], 10, 64)
+	width, err = strconv.ParseInt(r.EmulateViewport[0], 10, 64)
 	if err != nil {
 		return fmt.Errorf("emulate_viewport[0]: width must be an integer")
 	}
-	height, err = strconv.ParseInt(q.EmulateViewport[1], 10, 64)
+	height, err = strconv.ParseInt(r.EmulateViewport[1], 10, 64)
 	if err != nil {
 		return fmt.Errorf("emulate_viewport[1]: width must be an integer")
 	}
 
 	var options []chromedp.EmulateViewportOption
-	for i, option := range q.EmulateViewport[2:] {
+	for i, option := range r.EmulateViewport[2:] {
 		switch option {
 		case "landscape":
 			options = append(options, chromedp.EmulateLandscape)
@@ -182,69 +182,69 @@ func (q *Query) parseEmulateViewport() error {
 			return fmt.Errorf(`emulate_viewport[%d]: unknown option "%s"`, i+2, option)
 		}
 	}
-	q.appendActions(chromedp.EmulateViewport(width, height, options...))
+	r.appendActions(chromedp.EmulateViewport(width, height, options...))
 	return nil
 }
 
-func (q *Query) parseRenderDelay() error {
-	if q.RenderDelayRaw == "" {
+func (r *Request) parseRenderDelay() error {
+	if r.RenderDelay == "" {
 		return fmt.Errorf("global_render_delay is empty or missing")
 	}
-	delay, err := time.ParseDuration(q.RenderDelayRaw)
+	delay, err := time.ParseDuration(r.RenderDelay)
 	if err != nil {
 		return fmt.Errorf("invalid global_render_delay: %s", err)
 	}
 	if delay > MaxRenderDelay {
 		delay = MaxRenderDelay
 	}
-	q.renderDelay = delay
+	r.renderDelay = delay
 	return nil
 }
 
-func (q *Query) parseTimeout() error {
-	if q.TimeoutRaw == "" {
-		q.timeout = 20 * time.Second
+func (r *Request) parseTimeout() error {
+	if r.Timeout == "" {
+		r.timeout = 20 * time.Second
 		return nil
 	}
-	timeout, err := time.ParseDuration(q.TimeoutRaw)
+	timeout, err := time.ParseDuration(r.Timeout)
 	if err != nil {
 		return fmt.Errorf("invalid timeout: %s", err)
 	}
 	if timeout > MaxTimeout {
 		timeout = MaxTimeout
 	}
-	q.timeout = timeout
+	r.timeout = timeout
 	return nil
 }
 
-func (q *Query) parseQueryBlocks() error {
+func (r *Request) parseQueryBlocks() error {
 
-	if len(q.Blocks) == 0 {
+	if len(r.Query) == 0 {
 		return fmt.Errorf("query[0] must contain at least one action block")
 	}
-	if len(q.Blocks[0].Actions) < 1 {
+	if len(r.Query[0].Actions) < 1 {
 		return fmt.Errorf("query[0].actions must contain at least one action")
 	}
-	switch q.Blocks[0].Actions[0].Name() {
+	switch r.Query[0].Actions[0].Name() {
 	case "load_tab":
-		q.oldTabID = q.Blocks[0].Actions[0].Arg(1)
-		q.Blocks[0].Actions = q.Blocks[0].Actions[1:]
-		prefix, _, err := parseTabID(q.oldTabID)
+		r.oldTabID = r.Query[0].Actions[0].Arg(1)
+		r.Query[0].Actions = r.Query[0].Actions[1:]
+		prefix, _, err := parseTabID(r.oldTabID)
 		if err != nil {
 			return fmt.Errorf("load_tab: %s", err)
 		}
-		switch q.SessionID {
+		switch r.SessionID {
 		case "":
-			q.SessionID = prefix
+			r.SessionID = prefix
 			fmt.Fprintf(os.Stderr, "Request want tab %s, inferring window %s\n",
-				q.oldTabID, q.SessionID)
+				r.oldTabID, r.SessionID)
 		case prefix:
-			fmt.Fprintf(os.Stderr, "Request want tab %s and window %s\n", q.oldTabID, q.SessionID)
+			fmt.Fprintf(os.Stderr, "Request want tab %s and window %s\n", r.oldTabID, r.SessionID)
 		default:
-			return fmt.Errorf("tab %s is not part of window session %s", q.oldTabID, q.SessionID)
+			return fmt.Errorf("tab %s is not part of window session %s", r.oldTabID, r.SessionID)
 		}
 	case "navigate":
-		if len(q.Blocks[0].Actions) < 2 {
+		if len(r.Query[0].Actions) < 2 {
 			msg := `query[0].actions must contain at least one other action besides "navigate"`
 			return fmt.Errorf(msg)
 		}
@@ -252,39 +252,39 @@ func (q *Query) parseQueryBlocks() error {
 		return fmt.Errorf(`query[0].actions[0] must begin with either "load_tab" or "navigate"`)
 	}
 
-	if q.hasListeningEvents() {
-		q.appendActions(network.Enable(), enableLifecycleEvents())
+	if r.hasListeningEvents() {
+		r.appendActions(network.Enable(), enableLifecycleEvents())
 	}
 
-	q.res.Err = make([]string, len(q.Blocks))
-	q.res.Out = make([][]string, len(q.Blocks))
+	r.res.Err = make([]string, len(r.Query))
+	r.res.Out = make([][]string, len(r.Query))
 
 	var err error
 	var block *QueryBlock
-	for q.pos, block = range q.Blocks {
+	for r.pos, block = range r.Query {
 
 		// ensure non-nil empty return slices in JSON response
-		// q.res.Err[q.pos] = make([]string, 0)
-		q.res.Out[q.pos] = make([]string, 0)
+		// r.res.Err[r.pos] = make([]string, 0)
+		r.res.Out[r.pos] = make([]string, 0)
 
-		if len(block.Actions) == 0 && q.newTab() {
-			return fmt.Errorf("query[%d].actions can't be empty", q.pos)
+		if len(block.Actions) == 0 && r.newTab() {
+			return fmt.Errorf("query[%d].actions can't be empty", r.pos)
 		}
 		const efmt = "query[%d].actions[%v]: %s"
 
-		var xa ExternalAction
+		var xa Action
 		for block.pos, xa = range block.Actions {
-			err = q.parseAction(xa)
+			err = r.parseAction(xa)
 			if err != nil {
-				return fmt.Errorf(efmt, q.pos, block.pos, err)
+				return fmt.Errorf(efmt, r.pos, block.pos, err)
 			}
 		}
 
-		if err = q.parseRepeat(); err != nil {
-			return fmt.Errorf("query[%d].repeat: %s", q.pos, err)
+		if err = r.parseRepeat(); err != nil {
+			return fmt.Errorf("query[%d].repeat: %s", r.pos, err)
 		}
-		if err = q.parseWhile(block.While); err != nil {
-			return fmt.Errorf("query[%d].while: %s", q.pos, err)
+		if err = r.parseWhile(block.While); err != nil {
+			return fmt.Errorf("query[%d].while: %s", r.pos, err)
 		}
 
 	}
@@ -292,8 +292,8 @@ func (q *Query) parseQueryBlocks() error {
 	return nil
 }
 
-func (q *Query) hasListeningEvents() bool {
-	for _, block := range q.Blocks {
+func (r *Request) hasListeningEvents() bool {
+	for _, block := range r.Query {
 		for _, xa := range block.Actions {
 			if xa.Name() == "listen" {
 				return true
@@ -303,8 +303,8 @@ func (q *Query) hasListeningEvents() bool {
 	return false
 }
 
-func (q *Query) parseRepeat() error {
-	block := q.Blocks[q.pos]
+func (r *Request) parseRepeat() error {
+	block := r.Query[r.pos]
 	if block.Repeat == nil {
 		var defaultRepeat = 1
 		block.Repeat = &defaultRepeat
@@ -315,8 +315,8 @@ func (q *Query) parseRepeat() error {
 	return nil
 }
 
-func (q *Query) parseWhile(xa *ExternalAction) error {
-	block := q.Blocks[q.pos]
+func (r *Request) parseWhile(xa *Action) error {
+	block := r.Query[r.pos]
 
 	if xa == nil {
 		block.cdpWhile = defaultWhile(&block.cont)
@@ -352,7 +352,7 @@ func (q *Query) parseWhile(xa *ExternalAction) error {
 	return nil
 }
 
-func (q *Query) parseAction(xa ExternalAction) error {
+func (r *Request) parseAction(xa Action) error {
 	var err error
 	if err = xa.MustBeNonEmpty(); err != nil {
 		return err
@@ -364,7 +364,7 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		if err = xa.MustArgCount(1); err != nil {
 			return err
 		}
-		q.appendActions(click(xa.Arg(1)))
+		r.appendActions(click(xa.Arg(1)))
 
 	case "eval":
 		if err = xa.MustArgCount(1); err != nil {
@@ -379,7 +379,7 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		if err != nil {
 			return fmt.Errorf("listen: %s", err)
 		}
-		q.appendActions(listen(&q.SessionID, events...))
+		r.appendActions(listen(&r.SessionID, events...))
 
 	case "load_tab":
 		if err = xa.MustArgCount(1); err != nil {
@@ -396,13 +396,13 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		if err != nil {
 			return fmt.Errorf("navigate: non-URL argument: %s", err)
 		}
-		q.appendActions(navigate(xurl))
+		r.appendActions(navigate(xurl))
 
 	case "outer_html":
 		if err = xa.MustArgCount(0); err != nil {
 			return err
 		}
-		q.appendActions(outerHTML(&q.res.Out[q.pos]))
+		r.appendActions(outerHTML(&r.res.Out[r.pos]))
 
 	case "remove":
 		if len(xa.Args()) == 0 {
@@ -413,7 +413,7 @@ func (q *Query) parseAction(xa ExternalAction) error {
 				return fmt.Errorf(`remove[%d]: selector contains "'"`, i)
 			}
 		}
-		q.appendActions(removeElements(strings.Join(xa.Args(), ", ")))
+		r.appendActions(removeElements(strings.Join(xa.Args(), ", ")))
 
 	case "screenshot":
 		args, err := xa.NamedArgs(1)
@@ -428,16 +428,16 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		if ok && strings.Contains(padding, "'") {
 			return fmt.Errorf(`padding contains "'"`)
 		}
-		q.appendActions(screenshot(args, &q.res.img))
+		r.appendActions(screenshot(args, &r.res.img))
 
 	case "scroll":
 		if err = xa.MustArgCount(0, 1); err != nil {
 			return err
 		}
 		if len(xa.Args()) == 0 {
-			q.appendActions(scrollToBottom())
+			r.appendActions(scrollToBottom())
 		} else {
-			q.appendActions(chromedp.ScrollIntoView(xa.Arg(1), chromedp.ByQuery))
+			r.appendActions(chromedp.ScrollIntoView(xa.Arg(1), chromedp.ByQuery))
 		}
 
 	case "sleep":
@@ -446,14 +446,14 @@ func (q *Query) parseAction(xa ExternalAction) error {
 		}
 		var delay time.Duration
 		if len(xa.Args()) == 0 {
-			delay = q.renderDelay
+			delay = r.renderDelay
 		} else {
 			delay, err = time.ParseDuration(xa.Arg(1))
 			if err != nil {
 				return fmt.Errorf("sleep: invalid duration: %s", err)
 			}
 		}
-		q.appendActions(chromedp.Sleep(delay))
+		r.appendActions(chromedp.Sleep(delay))
 
 	default:
 		return fmt.Errorf("unknown action name \"%s\"", xa.Name())
@@ -497,36 +497,40 @@ func validEvent(event string) bool {
 	return true
 }
 
-func (q *Query) appendActions(actions ...chromedp.Action) {
-	block := q.Blocks[q.pos]
+func (r *Request) appendActions(actions ...chromedp.Action) {
+	block := r.Query[r.pos]
 	block.cdpActions = append(block.cdpActions, actions...)
 }
 
-func (q *Query) newTab() bool {
-	return q.oldTabID == ""
+func (r *Request) newTab() bool {
+	return r.oldTabID == ""
 }
 
-type ExternalAction []string
+type Action []string
 
-func (xa ExternalAction) Arg(n int) string {
+func NewAction(list ...string) Action {
+	return Action(list)
+}
+
+func (xa Action) Arg(n int) string {
 	if n < 0 || len(xa) <= n {
 		return ""
 	}
 	return xa[n]
 }
 
-func (xa ExternalAction) Args() []string {
+func (xa Action) Args() []string {
 	if len(xa) == 0 {
 		return nil
 	}
 	return xa[1:]
 }
 
-func (xa ExternalAction) Name() string {
+func (xa Action) Name() string {
 	return xa.Arg(0)
 }
 
-func (xa ExternalAction) NamedArgs(offset int) (map[string]string, error) {
+func (xa Action) NamedArgs(offset int) (map[string]string, error) {
 	if len(xa) < offset {
 		return nil, fmt.Errorf("%s: offset larger than arg list", xa.Name())
 	}
@@ -541,7 +545,7 @@ func (xa ExternalAction) NamedArgs(offset int) (map[string]string, error) {
 	return args, nil
 }
 
-func (xa ExternalAction) MustArgCount(ns ...int) error {
+func (xa Action) MustArgCount(ns ...int) error {
 	switch len(ns) {
 	case 0:
 		if len(xa) == 0 {
@@ -568,7 +572,7 @@ func (xa ExternalAction) MustArgCount(ns ...int) error {
 	return nil
 }
 
-func (xa ExternalAction) MustBeNonEmpty() error {
+func (xa Action) MustBeNonEmpty() error {
 	if xa.Name() == "" {
 		return fmt.Errorf("[0] must contain the name of an action")
 	}

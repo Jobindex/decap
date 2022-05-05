@@ -82,8 +82,8 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var q decap.Query
-	err = q.ParseRequest(req.Body)
+	var dec decap.Request
+	err = dec.ParseRequest(req.Body)
 	if err != nil {
 		status := http.StatusBadRequest
 		msg := fmt.Sprintf("%s: %s", http.StatusText(status), err)
@@ -94,7 +94,7 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 	// execute query
 
 	var res *decap.Result
-	res, err = q.Execute()
+	res, err = dec.Execute()
 	if err != nil {
 		// TODO: Propagate HTTP status properly
 		status := http.StatusInternalServerError
