@@ -10,13 +10,13 @@
 === On laptop
 
 [source,shell]
-$ go build
+$ go build ./cmd/...
 $ docker-compose build
 
 == Run locally
 
 [source,shell]
-$ ./cmd/decap/decap
+$ ./decap
 
 or via Docker
 
