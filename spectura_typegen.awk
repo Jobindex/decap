@@ -5,7 +5,7 @@ BEGIN {
     print "package decap\n"
 }
 
-/^type [A-Z]\w+ (\[\])string/ {
+/^type [A-Z]\w+ (\[\])?(byte|int|string)/ {
     printf "%s\n\n", $0
 }
 
