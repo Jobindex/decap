@@ -1,9 +1,17 @@
+# use golang to build
+FROM golang:1.18 as golang
+
+WORKDIR /app
+
+# copy source
+COPY browser.go go.mod go.sum query.go ./
+COPY cmd ./cmd
+
+RUN go build ./cmd/...
+
+# use chrome headless for deployment image
 FROM chromedp/headless-shell:98.0.4758.102
 
-ENV PORT 4531
-
-COPY decap /usr/local/bin/decap
-
-WORKDIR /
+COPY --from=golang /app/decap /usr/local/bin/decap
 
 ENTRYPOINT [ "decap" ]
