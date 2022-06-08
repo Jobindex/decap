@@ -1,6 +1,6 @@
 module github.com/jobindex/decap
 
-go 1.17
+go 1.18
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20220228194516-ead8cf59b1fa
