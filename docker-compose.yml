@@ -4,7 +4,7 @@ services:
     restart: always
     build:
       context: .
-    image: <docker registry>/decap:latest
+    image: decap:latest
     init: true
     environment:
       - TZ=Europe/Copenhagen

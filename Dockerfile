@@ -4,7 +4,7 @@ FROM golang:1.18 as golang
 WORKDIR /app
 
 # copy source
-COPY browser.go go.mod go.sum query.go ./
+COPY go.mod go.sum *.go ./
 COPY cmd ./cmd
 
 RUN go build ./cmd/...
