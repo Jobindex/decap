@@ -4,7 +4,7 @@ services:
     restart: always
     build:
       context: .
-    image: decap:latest
+    image: jobindex/decap:latest
     init: true
     environment:
       - TZ=Europe/Copenhagen
