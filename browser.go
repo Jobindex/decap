@@ -247,8 +247,7 @@ func outerHTML(out *[]string) chromedp.ActionFunc {
 
 func removeElements(sel string) chromedp.ActionFunc {
 	return func(ctx context.Context) error {
-		findElems := fmt.Sprintf("var elems = [... document.querySelectorAll('%s')]", sel)
-		cmd := fmt.Sprintf("%s; for (let i in elems) { elems[i].remove(); }", findElems)
+		cmd := fmt.Sprintf("document.querySelectorAll('%s').forEach(e => e.remove());", sel)
 		return chromedp.Run(ctx, chromedp.Evaluate(cmd, nil))
 	}
 }
