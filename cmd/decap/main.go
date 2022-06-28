@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	browsePath  = "/api/browse/"
-	DefaultPort = 4531
-	minAPI      = "v0.7"
-	nextAPI     = "v0.8"
+	browsePath    = "/api/browse/"
+	newBrowsePath = "/api/decap/v0/browse"
+	DefaultPort   = 4531
+	minAPI        = "v0.8"
+	nextAPI       = "v0.9"
 )
 
 var (
@@ -37,8 +38,11 @@ func main() {
 	var handler http.Handler
 	http.HandleFunc("/", http.NotFound)
 
-	handler = handleHTTPMethod(http.HandlerFunc(browseHandler))
+	handler = handleHTTPMethod(http.HandlerFunc(oldVersionFmtBrowseHandler))
 	http.Handle(browsePath, handler)
+
+	handler = handleHTTPMethod(http.HandlerFunc(browseHandler))
+	http.Handle(newBrowsePath, handler)
 
 	handler = handleHTTPMethod(http.HandlerFunc(deprecationHandler))
 	for _, v := range deprecatedAPIs {
@@ -53,13 +57,13 @@ func main() {
 	}
 
 	fmt.Fprintf(os.Stderr, "%s decap listening on http://localhost:%d%s\n",
-		time.Now().Format("[15:04:05]"), port, browsePath)
+		time.Now().Format("[15:04:05]"), port, newBrowsePath)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
 
-func browseHandler(w http.ResponseWriter, req *http.Request) {
+func oldVersionFmtBrowseHandler(w http.ResponseWriter, req *http.Request) {
 
-	// validate request
+	// validate version
 
 	version, err := versionFromPath(req.URL.Path)
 	if err != nil {
@@ -75,6 +79,13 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	browseHandler(w, req)
+}
+
+func browseHandler(w http.ResponseWriter, req *http.Request) {
+
+	// validate request
+
 	if req.Header.Get("Content-Type") != "application/json" {
 		status := http.StatusBadRequest
 		msg := fmt.Sprintf("%s: expected application/json", http.StatusText(status))
@@ -83,7 +94,7 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var dec decap.Request
-	err = dec.ParseRequest(req.Body)
+	err := dec.ParseRequest(req.Body)
 	if err != nil {
 		status := http.StatusBadRequest
 		msg := fmt.Sprintf("%s: %s", http.StatusText(status), err)
