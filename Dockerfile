@@ -3,10 +3,15 @@ FROM golang:1.18 as golang
 
 WORKDIR /app
 
-# copy source
-COPY go.mod go.sum *.go ./
+# install deps
+COPY go.mod go.sum ./
+RUN go mod download
+
+# copy sause
+COPY *.go ./
 COPY cmd ./cmd
 
+# build
 RUN go build ./cmd/...
 
 # use chrome headless for deployment image
