@@ -319,3 +319,28 @@ func listen(id *string, events ...string) chromedp.ActionFunc {
 		}
 	}
 }
+
+var cookieInfoSelectors = []string{
+	`#AcceptCookiesBacgkround`, // sic
+	`#AcceptCookiesNotice`,
+	`#CybotCookiebotDialog`,
+	`#ca_banner`,
+	`#cconsent-modal`,
+	`#cookie-information-template-wrapper`,
+	`#cookieDisclaimerBackdrop`,
+	`#cookieDisclaimerOuter`,
+	`#cookieWarningContainer`,
+	`#cookiebannercontainer`,
+	`#cookiescript_injected`,
+	`#didomi-popup`,
+	`#js_cookie-consent__main`,
+	`#onetrust-consent-sdk`,
+	`#sliding-popup`,
+	`.cdk-overlay-container`,
+	`.cookie-overlay`,
+	`.cookie-policy-bar`,
+	`.legalmonster-cleanslate`,
+	`.qc-cmp2-container`,
+	`div[aria-label="cookieconsent"]`,
+	`div[data-widget="ph-cookie-popup-v2"]`,
+}
