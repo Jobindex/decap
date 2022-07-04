@@ -415,11 +415,11 @@ func (r *Request) parseAction(xa Action) error {
 		}
 		r.appendActions(removeElements(strings.Join(xa.Args(), ", ")))
 
-	case "remove_cookie_info":
+	case "remove_cookie_info", "remove_info_boxes":
 		if err = xa.MustArgCount(0); err != nil {
 			return err
 		}
-		r.appendActions(removeElements(strings.Join(cookieInfoSelectors, ", ")))
+		r.appendActions(removeElements(strings.Join(infoBoxSelectors, ", ")))
 
 	case "screenshot":
 		args, err := xa.NamedArgs(1)

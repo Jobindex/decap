@@ -320,7 +320,7 @@ func listen(id *string, events ...string) chromedp.ActionFunc {
 	}
 }
 
-var cookieInfoSelectors = []string{
+var infoBoxSelectors = []string{
 	`#AcceptCookiesBacgkround`, // sic
 	`#AcceptCookiesNotice`,
 	`#CybotCookiebotDialog`,
