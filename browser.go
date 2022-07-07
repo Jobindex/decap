@@ -341,5 +341,16 @@ var infoBoxSelectors = []string{
 	`div.region-emergency`,
 	`div[data-automation-id="legalNotice"]`,
 	`div[data-widget="ph-cookie-popup-v2"]`,
+}
+
+var navigationSelectors = []string{
+	`#share`,
+	`[class*="button" i]`,
+	`[class*="facebook" i]`,
+	`[class*="linkedin" i]`,
+	`[class*="topmenu" i]`,
+	`[class*="twitter" i]`,
+	`button`,
+	`div[class*="navigation" i]`,
 	`nav`,
 }
