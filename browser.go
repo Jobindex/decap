@@ -225,6 +225,13 @@ func enableLifecycleEvents() chromedp.ActionFunc {
 	}
 }
 
+func hideElements(sel string) chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		cmd := fmt.Sprintf(`document.querySelectorAll('%s').forEach(e => e.style.visibility = "hidden");`, sel)
+		return chromedp.Run(ctx, chromedp.Evaluate(cmd, nil))
+	}
+}
+
 func navigate(url string) chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		_, _, _, err := page.Navigate(url).Do(ctx)

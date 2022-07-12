@@ -421,11 +421,11 @@ func (r *Request) parseAction(xa Action) error {
 		}
 		r.appendActions(removeElements(strings.Join(infoBoxSelectors, ", ")))
 
-	case "remove_navigation":
+	case "hide_navigation", "remove_navigation":
 		if err = xa.MustArgCount(0); err != nil {
 			return err
 		}
-		r.appendActions(removeElements(strings.Join(navigationSelectors, ", ")))
+		r.appendActions(hideElements(strings.Join(navigationSelectors, ", ")))
 
 	case "screenshot":
 		args, err := xa.NamedArgs(1)
