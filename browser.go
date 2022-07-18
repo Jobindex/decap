@@ -340,7 +340,6 @@ var (
 		`[aria-label*="cookie" i]`,
 		`[class$="overlay" i]`,
 		`[class*="alert"]`,
-		`[class*="cookie" i]`,
 		`[class*="infobar"]`,
 		`[data-widget*="cookie" i]`,
 		`[id$="popup" i]`,
@@ -350,6 +349,7 @@ var (
 		`div#usercentrics-root`,
 		`div.archive-header`,
 		`div.region-emergency`,
+		`div[class*="cookie" i]`, // avoid body[class*="cookie"]
 		`div[data-automation-id="legalNotice"]`,
 		`div[data-widget="ph-cookie-popup-v2"]`,
 		`th-widget`,
@@ -405,7 +405,7 @@ var (
 		`[class*="dropdown" i]`,
 		`[class*="header"] > [class*="links"]`,
 		`[class*="leftmenu" i]`,
-		`[class*="navbar"]`,
+		`[class*="localmenu" i]`,
 		`[class*="pagemenu" i]`,
 		`[class*="panel"] [class*="navigation"]`,
 		`[class*="topbarnav"]`,
@@ -415,9 +415,11 @@ var (
 		`a[href^="/apply" i]`,
 		`img[src*="arrow_back"]`,
 		`nav`,
+		`#outershell > .navbar`,
 	}
 	navigationSelectorList = []string{
 		`.nav`,
+		`[class*="navbar"]`,   // too broad, e.g. https://www.jobindex.dk with sub-logo-header
 		`[role="navigation"]`, // too broad?, e.g. ncc.dk
 		`div[class*="navigation" i]`,
 	}
