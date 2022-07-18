@@ -28,6 +28,19 @@ var (
 	}
 )
 
+func init() {
+	infoBoxSelector = strings.Join(infoBoxSelectorList, ", ")
+	navButtonSelector = strings.Join(navButtonSelectorList, ", ")
+	navSectionSelector = strings.Join(navSectionSelectorList, ", ")
+
+	oldNavigationSelectorList := append(navigationSelectorList,
+		infoBoxSelector,
+		navButtonSelector,
+		navSectionSelector,
+	)
+	oldNavigationSelector = strings.Join(oldNavigationSelectorList, ", ")
+}
+
 type Result struct {
 	Err      []string   `json:"err"`
 	Out      [][]string `json:"out"`
@@ -373,6 +386,18 @@ func (r *Request) parseAction(xa Action) error {
 		// TODO: Append the appropriate action
 		return fmt.Errorf("eval not implemented")
 
+	case "hide_navigation", "remove_navigation":
+		if err = xa.MustArgCount(0); err != nil {
+			return err
+		}
+		r.appendActions(hideElements(oldNavigationSelector))
+
+	case "hide_nav_buttons":
+		if err = xa.MustArgCount(0); err != nil {
+			return err
+		}
+		r.appendActions(hideElements(navButtonSelector))
+
 	case "listen":
 		events := xa.Args()
 		events, err = parseEvents(events)
@@ -419,13 +444,13 @@ func (r *Request) parseAction(xa Action) error {
 		if err = xa.MustArgCount(0); err != nil {
 			return err
 		}
-		r.appendActions(removeElements(strings.Join(infoBoxSelectors, ", ")))
+		r.appendActions(removeElements(infoBoxSelector))
 
-	case "hide_navigation", "remove_navigation":
+	case "remove_nav_sections":
 		if err = xa.MustArgCount(0); err != nil {
 			return err
 		}
-		r.appendActions(hideElements(strings.Join(navigationSelectors, ", ")))
+		r.appendActions(removeElements(navSectionSelector))
 
 	case "screenshot":
 		args, err := xa.NamedArgs(1)
