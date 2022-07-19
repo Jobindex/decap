@@ -329,8 +329,10 @@ func listen(id *string, events ...string) chromedp.ActionFunc {
 
 var (
 	infoBoxSelectorList = []string{
+		// `[class$="overlay" i]`, // too broad
 		`#ca_banner`,
 		`#cconsent-modal`,
+		`#coiOverlay`,
 		`#onetrust-consent-sdk`,
 		`.cdk-overlay-container`,
 		`.lbOuterWrapper`,
@@ -338,9 +340,10 @@ var (
 		`.modal-backdrop`,
 		`.qc-cmp2-container`,
 		`[aria-label*="cookie" i]`,
-		`[class$="overlay" i]`,
 		`[class*="alert"]`,
 		`[class*="infobar"]`,
+		`[class*="ui-dialog"]`,
+		`[class*="ui-widget-overlay"]`,
 		`[data-widget*="cookie" i]`,
 		`[id$="popup" i]`,
 		`[id*="alert"]`,
@@ -354,41 +357,53 @@ var (
 		`div[data-widget="ph-cookie-popup-v2"]`,
 		`th-widget`,
 	}
+
 	navButtonSelectorList = []string{
 		// `[class*="menu" i]`, // too broad
+		// `[class*="search" i]`, // too broad, e.g. politi.dk
+		// `[id*="menu" i]`, // too broad
+		// `a[href="/"]`, backlink is sometimes the company logo
 		`.info-nav`,
 		`.menu`,
 		`.mobile-trigger`,
+		`[class$="icon"]`,
 		`[class$="print"]`,
 		`[class$="print-hidden"]`,
 		`[class$="print-none"]`,
 		`[class*="btn" i]`,
 		`[class*="burger"]`,
 		`[class*="button" i]`,
+		`[class*="email" i]`,
 		`[class*="facebook" i]`,
 		`[class*="linkedin" i]`,
 		`[class*="links"]`,
 		`[class*="menuicon" i]`,
 		`[class*="navicon"]`,
-		`[class*="search" i]`,
 		`[class*="toggle"]`,
 		`[class*="twitter" i]`,
+		`[data-kind="menu" i]`,
 		`[id$="service-link"]`,
 		`[id*="button" i]`,
-		`[id*="menu" i]`,
 		`[id*="nav-icon"]`,
 		`[id*="search" i]`,
 		`[id*="share-label"]`,
+		`[id*="toggle"]`,
 		`[onclick^="window.print"]`,
 		`[role="button"]`,
 		`[role="menu"]`,
 		`a[data-tag*="profile" i]`,
 		`a[data-tag*="signin" i]`,
 		`a[href*="cookie"]`,
-		`a[href^="tel:"]`,
+		`a[href*="facebook"]`,
+		`a[href*="linkedin"]`,
+		`a[href*="login" i]`,
+		`a[href*="register" i]`,
 		`button`,
 	}
+
 	navSectionSelectorList = []string{
+		// `[id*="dropdown" i]`, // too broad, e.g. recman.dk
+		`#outershell > .navbar`,
 		`#share`,
 		`.ToolsWrapper`,
 		`.social-panel-mobile`,
@@ -398,31 +413,40 @@ var (
 		`[class$="back" i] svg`,
 		`[class$="controls"]`,
 		`[class$="header-buttons"]`,
+		`[class$="lang" i]`,
 		`[class$="share"]`,
 		`[class*="apply-link"]`,
 		`[class*="applylink"]`,
+		`[class*="back" i] a`,
 		`[class*="breadcrumb" i]`,
 		`[class*="dropdown" i]`,
 		`[class*="header"] > [class*="links"]`,
 		`[class*="leftmenu" i]`,
 		`[class*="localmenu" i]`,
+		`[class*="menulink" i] `,
 		`[class*="pagemenu" i]`,
 		`[class*="panel"] [class*="navigation"]`,
 		`[class*="topbarnav"]`,
+		`[class^="area-nav"]`,
+		`[class^="language" i]`,
 		`[id*="breadcrumb" i]`,
-		`[id*="dropdown" i]`,
+		`[id*="contact" i]`,
 		`a[class*="arrow"]`,
+		`a[href*="print" i]`,
 		`a[href^="/apply" i]`,
+		`a[href^="tel:"]`,
+		`iframe[src*="facebook"]`,
 		`img[src*="arrow_back"]`,
 		`nav`,
-		`#outershell > .navbar`,
 	}
+
 	navigationSelectorList = []string{
 		`.nav`,
 		`[class*="navbar"]`,   // too broad, e.g. https://www.jobindex.dk with sub-logo-header
-		`[role="navigation"]`, // too broad?, e.g. ncc.dk
+		`[role="navigation"]`, // too broad, e.g. ncc.dk
 		`div[class*="navigation" i]`,
 	}
+
 	infoBoxSelector       string
 	navButtonSelector     string
 	navSectionSelector    string
