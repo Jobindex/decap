@@ -139,9 +139,7 @@ func removeWindow(id string, windows, tabs *map[string]session) string {
 }
 
 func createWindow(id string) session {
-	ctx, cancel := chromedp.NewExecAllocator(
-		context.Background(),
-	)
+	ctx, cancel := chromedp.NewContext(context.Background())
 	var w session
 	w.cancel = cancel
 	if len(id) < 8 {
