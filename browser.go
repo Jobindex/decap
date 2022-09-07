@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
@@ -33,6 +34,17 @@ func init() {
 	tryScrollBody := fmt.Sprintf(cmdFmt, "document.body")
 	tryScrollHTML := fmt.Sprintf(cmdFmt, "document.documentElement")
 	scrollCmd = tryScrollHTML + tryScrollBody
+
+	infoBoxSelector = strings.Join(infoBoxSelectorList, ", ")
+	navButtonSelector = strings.Join(navButtonSelectorList, ", ")
+	navSectionSelector = strings.Join(navSectionSelectorList, ", ")
+
+	oldNavigationSelectorList := append(navigationSelectorList,
+		infoBoxSelector,
+		navButtonSelector,
+		navSectionSelector,
+	)
+	oldNavigationSelector = strings.Join(oldNavigationSelectorList, ", ")
 }
 
 type session struct {

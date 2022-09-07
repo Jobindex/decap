@@ -28,19 +28,6 @@ var (
 	}
 )
 
-func init() {
-	infoBoxSelector = strings.Join(infoBoxSelectorList, ", ")
-	navButtonSelector = strings.Join(navButtonSelectorList, ", ")
-	navSectionSelector = strings.Join(navSectionSelectorList, ", ")
-
-	oldNavigationSelectorList := append(navigationSelectorList,
-		infoBoxSelector,
-		navButtonSelector,
-		navSectionSelector,
-	)
-	oldNavigationSelector = strings.Join(oldNavigationSelectorList, ", ")
-}
-
 type Result struct {
 	Err      []string   `json:"err"`
 	Out      [][]string `json:"out"`
