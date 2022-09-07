@@ -1,5 +1,5 @@
 # use golang to build
-FROM golang:1.18 as golang
+FROM golang:1.19 as golang
 
 WORKDIR /app
 
