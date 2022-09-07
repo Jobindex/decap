@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	scrollCmd    string
 	tabLoadQuery = make(chan string)
 	tabLoadReply = make(chan session)
 	tabSave      = make(chan session)
@@ -23,6 +24,13 @@ var (
 	windowReply  = make(chan session)
 	tabRegexp    = regexp.MustCompile(`^([[:xdigit:]]{8,})_([[:xdigit:]]{8})$`)
 )
+
+func init() {
+	const cmdFmt = `%s.style.overflow = ""; %[1]s.scrollTo(0,document.body.scrollHeight);`
+	tryScrollBody := fmt.Sprintf(cmdFmt, "document.body")
+	tryScrollHTML := fmt.Sprintf(cmdFmt, "document.documentElement")
+	scrollCmd = tryScrollHTML + tryScrollBody
+}
 
 type session struct {
 	ctx     context.Context
@@ -285,8 +293,7 @@ func screenshot(args map[string]string, buf *[]byte) chromedp.ActionFunc {
 
 func scrollToBottom() chromedp.ActionFunc {
 	return func(ctx context.Context) error {
-		cmd := `document.body.scrollTo(0,document.body.scrollHeight);`
-		return chromedp.Evaluate(cmd, nil).Do(ctx)
+		return chromedp.Evaluate(scrollCmd, nil).Do(ctx)
 	}
 }
 
