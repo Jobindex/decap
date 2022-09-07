@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	debugMode    bool
 	scrollCmd    string
 	tabLoadQuery = make(chan string)
 	tabLoadReply = make(chan session)
@@ -26,6 +27,8 @@ var (
 )
 
 func init() {
+	debugMode = os.Getenv("DEBUG") == "true"
+
 	const cmdFmt = `%s.style.overflow = ""; %[1]s.scrollTo(0,document.body.scrollHeight);`
 	tryScrollBody := fmt.Sprintf(cmdFmt, "document.body")
 	tryScrollHTML := fmt.Sprintf(cmdFmt, "document.documentElement")
@@ -147,7 +150,13 @@ func removeWindow(id string, windows, tabs *map[string]session) string {
 }
 
 func createWindow(id string) session {
-	ctx, cancel := chromedp.NewContext(context.Background())
+	var ctx context.Context
+	var cancel context.CancelFunc
+	if debugMode {
+		ctx, cancel = chromedp.NewExecAllocator(context.Background())
+	} else {
+		ctx, cancel = chromedp.NewContext(context.Background())
+	}
 	var w session
 	w.cancel = cancel
 	if len(id) < 8 {

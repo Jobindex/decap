@@ -23,11 +23,12 @@ const (
 
 var (
 	deprecatedAPIs []string
-	debugFlag      = flag.Bool("debug", false, "run Decap in GUI-debugging mode")
+	debugMode      = false
 )
 
 func init() {
 	deprecatedAPIs = inferDeprecatedAPIs()
+	debugMode = os.Getenv("DEBUG") == "true"
 }
 
 func main() {
@@ -50,7 +51,7 @@ func main() {
 	}
 
 	var port int
-	if *debugFlag {
+	if debugMode {
 		port = autoDebuggingPort()
 	} else {
 		port = DefaultPort
