@@ -373,12 +373,6 @@ func (r *Request) parseAction(xa Action) error {
 		// TODO: Append the appropriate action
 		return fmt.Errorf("eval not implemented")
 
-	case "hide_navigation", "remove_navigation":
-		if err = xa.MustArgCount(0); err != nil {
-			return err
-		}
-		r.appendActions(hideElements(oldNavigationSelector))
-
 	case "hide_nav_buttons":
 		if err = xa.MustArgCount(0); err != nil {
 			return err
@@ -427,7 +421,7 @@ func (r *Request) parseAction(xa Action) error {
 		}
 		r.appendActions(removeElements(strings.Join(xa.Args(), ", ")))
 
-	case "remove_cookie_info", "remove_info_boxes":
+	case "remove_info_boxes":
 		if err = xa.MustArgCount(0); err != nil {
 			return err
 		}

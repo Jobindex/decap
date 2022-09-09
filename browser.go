@@ -38,13 +38,6 @@ func init() {
 	infoBoxSelector = strings.Join(infoBoxSelectorList, ", ")
 	navButtonSelector = strings.Join(navButtonSelectorList, ", ")
 	navSectionSelector = strings.Join(navSectionSelectorList, ", ")
-
-	oldNavigationSelectorList := append(navigationSelectorList,
-		infoBoxSelector,
-		navButtonSelector,
-		navSectionSelector,
-	)
-	oldNavigationSelector = strings.Join(oldNavigationSelectorList, ", ")
 }
 
 type session struct {
@@ -354,6 +347,10 @@ func listen(id *string, events ...string) chromedp.ActionFunc {
 }
 
 var (
+	infoBoxSelector    string
+	navButtonSelector  string
+	navSectionSelector string
+
 	infoBoxSelectorList = []string{
 		// `[class$="overlay" i]`, // too broad
 		`#ca_banner`,
@@ -428,7 +425,11 @@ var (
 	}
 
 	navSectionSelectorList = []string{
-		// `[id*="dropdown" i]`, // too broad, e.g. recman.dk
+		// `.nav`,                       // probably too broad
+		// `[class*="navbar"]`,          // too broad, e.g. Jobindex with sub-logo-header
+		// `[id*="dropdown" i]`,         // too broad, e.g. recman.dk
+		// `[role="navigation"]`,        // too broad, e.g. ncc.dk
+		// `div[class*="navigation" i]`, // probably too broad
 		`#outershell > .navbar`,
 		`#share`,
 		`.ToolsWrapper`,
@@ -465,16 +466,4 @@ var (
 		`img[src*="arrow_back"]`,
 		`nav`,
 	}
-
-	navigationSelectorList = []string{
-		`.nav`,
-		`[class*="navbar"]`,   // too broad, e.g. https://www.jobindex.dk with sub-logo-header
-		`[role="navigation"]`, // too broad, e.g. ncc.dk
-		`div[class*="navigation" i]`,
-	}
-
-	infoBoxSelector       string
-	navButtonSelector     string
-	navSectionSelector    string
-	oldNavigationSelector string
 )
