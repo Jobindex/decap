@@ -36,6 +36,7 @@ func init() {
 	scrollCmd = tryScrollHTML + tryScrollBody
 
 	infoBoxSelector = strings.Join(infoBoxSelectorList, ", ")
+	infoSectionSelector = strings.Join(infoSectionSelectorList, ", ")
 	navButtonSelector = strings.Join(navButtonSelectorList, ", ")
 	navSectionSelector = strings.Join(navSectionSelectorList, ", ")
 }
@@ -347,9 +348,10 @@ func listen(id *string, events ...string) chromedp.ActionFunc {
 }
 
 var (
-	infoBoxSelector    string
-	navButtonSelector  string
-	navSectionSelector string
+	infoBoxSelector     string
+	infoSectionSelector string
+	navButtonSelector   string
+	navSectionSelector  string
 
 	infoBoxSelectorList = []string{
 		// `[class$="overlay" i]`, // too broad
@@ -364,7 +366,6 @@ var (
 		`.qc-cmp2-container`,
 		`[aria-label*="cookie" i]`,
 		`[class*="alert"]`,
-		`[class*="infobar"]`,
 		`[class*="ui-dialog"]`,
 		`[class*="ui-widget-overlay"]`,
 		`[data-widget*="cookie" i]`,
@@ -379,6 +380,12 @@ var (
 		`div[data-automation-id="legalNotice"]`,
 		`div[data-widget="ph-cookie-popup-v2"]`,
 		`th-widget`,
+	}
+
+	infoSectionSelectorList = []string{
+		`[class*="infobar"]`,
+		`[id*="contact" i]`,
+		`a[href^="tel:"]`,
 	}
 
 	navButtonSelectorList = []string{
@@ -457,11 +464,9 @@ var (
 		`[class^="area-nav"]`,
 		`[class^="language" i]`,
 		`[id*="breadcrumb" i]`,
-		`[id*="contact" i]`,
 		`a[class*="arrow"]`,
 		`a[href*="print" i]`,
 		`a[href^="/apply" i]`,
-		`a[href^="tel:"]`,
 		`iframe[src*="facebook"]`,
 		`img[src*="arrow_back"]`,
 		`nav`,

@@ -427,6 +427,12 @@ func (r *Request) parseAction(xa Action) error {
 		}
 		r.appendActions(removeElements(infoBoxSelector))
 
+	case "remove_info_sections":
+		if err = xa.MustArgCount(0); err != nil {
+			return err
+		}
+		r.appendActions(removeElements(infoSectionSelector))
+
 	case "remove_nav_sections":
 		if err = xa.MustArgCount(0); err != nil {
 			return err
