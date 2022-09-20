@@ -360,6 +360,7 @@ var (
 		`#coiOverlay`,
 		`#onetrust-consent-sdk`,
 		`.cdk-overlay-container`,
+		`.conversation-quick`,
 		`.lbOuterWrapper`,
 		`.legalmonster-cleanslate`,
 		`.modal-backdrop`,
@@ -376,6 +377,7 @@ var (
 		`div#usercentrics-root`,
 		`div.archive-header`,
 		`div.region-emergency`,
+		`div[aria-label*="message" i]`,
 		`div[class*="cookie" i]`, // avoid body[class*="cookie"]
 		`div[data-automation-id="legalNotice"]`,
 		`div[data-widget="ph-cookie-popup-v2"]`,
@@ -384,6 +386,7 @@ var (
 
 	infoSectionSelectorList = []string{
 		`[class*="infobar"]`,
+		`[class*=jobdetailslocation]`,
 		`[id*="contact" i]`,
 		`a[href^="tel:"]`,
 	}
@@ -405,11 +408,15 @@ var (
 		`[class*="button" i]`,
 		`[class*="email" i]`,
 		`[class*="facebook" i]`,
+		`[class*="jobcart" i]`,
 		`[class*="linkedin" i]`,
 		`[class*="links"]`,
 		`[class*="menuicon" i]`,
+		`[class*="navi-items"]`,
 		`[class*="navicon"]`,
-		`[class*="toggle"]`,
+		`[class*="open-menu" i]`,
+		`[class*="search" i]`,
+		`[class*="toggle" i]`,
 		`[class*="twitter" i]`,
 		`[data-kind="menu" i]`,
 		`[id$="service-link"]`,
@@ -417,7 +424,7 @@ var (
 		`[id*="nav-icon"]`,
 		`[id*="search" i]`,
 		`[id*="share-label"]`,
-		`[id*="toggle"]`,
+		`[id*="toggle" i]`,
 		`[onclick^="window.print"]`,
 		`[role="button"]`,
 		`[role="menu"]`,
@@ -428,6 +435,7 @@ var (
 		`a[href*="linkedin"]`,
 		`a[href*="login" i]`,
 		`a[href*="register" i]`,
+		`a[href="#"]`,
 		`button`,
 	}
 
@@ -456,6 +464,7 @@ var (
 		`[class*="dropdown" i]`,
 		`[class*="header"] > [class*="links"]`,
 		`[class*="leftmenu" i]`,
+		`[class*="linkbox"]`,
 		`[class*="localmenu" i]`,
 		`[class*="menulink" i] `,
 		`[class*="pagemenu" i]`,
