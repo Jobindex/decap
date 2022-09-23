@@ -229,6 +229,15 @@ func elementVisible(sel string, res *bool) chromedp.ActionFunc {
 	}
 }
 
+func evaluate(cmd string, out *[]string) chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		var buf []byte
+		err := chromedp.Run(ctx, chromedp.Evaluate(cmd, &buf))
+		*out = append(*out, string(buf))
+		return err
+	}
+}
+
 func defaultWhile(res *bool) chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		*res = true

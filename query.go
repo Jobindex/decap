@@ -370,8 +370,7 @@ func (r *Request) parseAction(xa Action) error {
 		if err = xa.MustArgCount(1); err != nil {
 			return err
 		}
-		// TODO: Append the appropriate action
-		return fmt.Errorf("eval not implemented")
+		r.appendActions(evaluate(xa.Arg(1), &r.res.Out[r.pos]))
 
 	case "hide_nav_buttons":
 		if err = xa.MustArgCount(0); err != nil {
