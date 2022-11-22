@@ -236,10 +236,10 @@ func (r *Request) parseQueryBlocks() error {
 		switch r.SessionID {
 		case "":
 			r.SessionID = prefix
-			fmt.Fprintf(os.Stderr, "Request want tab %s, inferring window %s\n",
+			fmt.Fprintf(os.Stderr, "Loading tab %s, inferring window %s\n",
 				r.oldTabID, r.SessionID)
 		case prefix:
-			fmt.Fprintf(os.Stderr, "Request want tab %s and window %s\n", r.oldTabID, r.SessionID)
+			fmt.Fprintf(os.Stderr, "Loading tab %s and window %s\n", r.oldTabID, r.SessionID)
 		default:
 			return fmt.Errorf("tab %s is not part of window session %s", r.oldTabID, r.SessionID)
 		}
