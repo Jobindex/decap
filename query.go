@@ -57,10 +57,11 @@ type QueryBlock struct {
 }
 
 type ViewportBlock struct {
-	Width       int     `json:"width"`
-	Height      int     `json:"height"`
-	Orientation *string `json:"orientation"`
-	Mobile      bool    `json:"mobile"`
+	Width       int      `json:"width"`
+	Height      int      `json:"height"`
+	Orientation *string  `json:"orientation"`
+	Mobile      bool     `json:"mobile"`
+	Scale       *float64 `json:"scale"`
 }
 
 type Request struct {
@@ -178,6 +179,9 @@ func (r *Request) parseEmulateViewport() error {
 	}
 	if r.EmulateViewport.Mobile {
 		options = append(options, chromedp.EmulateMobile)
+	}
+	if r.EmulateViewport.Scale != nil {
+		options = append(options, chromedp.EmulateScale(*r.EmulateViewport.Scale))
 	}
 	r.appendActions(
 		chromedp.EmulateViewport(
