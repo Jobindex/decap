@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -57,15 +56,22 @@ type QueryBlock struct {
 	pos        int
 }
 
+type ViewportBlock struct {
+	Width       int     `json:"width"`
+	Height      int     `json:"height"`
+	Orientation *string `json:"orientation"`
+	Mobile      bool    `json:"mobile"`
+}
+
 type Request struct {
-	Query            []*QueryBlock `json:"query"`
-	EmulateViewport  []string      `json:"emulate_viewport"`
-	ForwardUserAgent bool          `json:"forward_user_agent"`
-	RenderDelay      string        `json:"global_render_delay"`
-	ReuseTab         bool          `json:"reuse_tab"`
-	ReuseWindow      bool          `json:"reuse_window"`
-	SessionID        string        `json:"sessionid"`
-	Timeout          string        `json:"timeout"`
+	Query            []*QueryBlock  `json:"query"`
+	EmulateViewport  *ViewportBlock `json:"emulate_viewport"`
+	ForwardUserAgent bool           `json:"forward_user_agent"`
+	RenderDelay      string         `json:"global_render_delay"`
+	ReuseTab         bool           `json:"reuse_tab"`
+	ReuseWindow      bool           `json:"reuse_window"`
+	SessionID        string         `json:"sessionid"`
+	Timeout          string         `json:"timeout"`
 	oldTabID         string
 	pos              int
 	renderDelay      time.Duration
@@ -151,38 +157,35 @@ func (r *Request) ParseRequest(body io.Reader) error {
 }
 
 func (r *Request) parseEmulateViewport() error {
-	switch len(r.EmulateViewport) {
-	case 0:
+	switch {
+	case r.EmulateViewport == nil:
 		return nil
-	case 1:
-		return fmt.Errorf("emulate_viewport: width arg has no matching height arg")
+	case r.EmulateViewport.Width == 0:
+		return fmt.Errorf("emulate_viewport.width: field must be non-zero")
+	case r.EmulateViewport.Height == 0:
+		return fmt.Errorf("emulate_viewport.height: field must be non-zero")
 	}
-
-	var height, width int64
-	var err error
-	width, err = strconv.ParseInt(r.EmulateViewport[0], 10, 64)
-	if err != nil {
-		return fmt.Errorf("emulate_viewport[0]: width must be an integer")
-	}
-	height, err = strconv.ParseInt(r.EmulateViewport[1], 10, 64)
-	if err != nil {
-		return fmt.Errorf("emulate_viewport[1]: width must be an integer")
-	}
-
 	var options []chromedp.EmulateViewportOption
-	for i, option := range r.EmulateViewport[2:] {
-		switch option {
+	if r.EmulateViewport.Orientation != nil {
+		switch orient := *r.EmulateViewport.Orientation; orient {
 		case "landscape":
 			options = append(options, chromedp.EmulateLandscape)
-		case "mobile":
-			options = append(options, chromedp.EmulateMobile)
 		case "portrait":
 			options = append(options, chromedp.EmulatePortrait)
 		default:
-			return fmt.Errorf(`emulate_viewport[%d]: unknown option "%s"`, i+2, option)
+			return fmt.Errorf(`emulate_viewport: unknown orientation "%s"`, orient)
 		}
 	}
-	r.appendActions(chromedp.EmulateViewport(width, height, options...))
+	if r.EmulateViewport.Mobile {
+		options = append(options, chromedp.EmulateMobile)
+	}
+	r.appendActions(
+		chromedp.EmulateViewport(
+			int64(r.EmulateViewport.Width),
+			int64(r.EmulateViewport.Height),
+			options...,
+		),
+	)
 	return nil
 }
 
