@@ -12,7 +12,7 @@ var && match($0, /^\t(\w+)SelectorList/, sel_name) {
     sel_block = sel_name[1]
 }
 
-var && sel_block && match($0, /^\t\t`([^'`]+)`,$/, sel) {
+var && sel_block && match($0, /^\t\t`([^'`]+)`,/, sel) {
     sel_joined = sel_joined ? sprintf("%s, %s", sel_joined, sel[1]) : sel[1]
 }
 
