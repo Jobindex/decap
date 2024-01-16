@@ -1,5 +1,5 @@
 # use golang to build
-FROM golang:1.20 as golang
+FROM golang:1.21-bullseye as golang
 
 WORKDIR /app
 
