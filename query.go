@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,17 +34,26 @@ type Result struct {
 	TabID    string     `json:"tab_id"`
 	WindowID string     `json:"window_id"`
 	img      []byte
+	pdf      []byte
 }
 
 func (res *Result) Type() string {
-	if len(res.img) != 0 {
+	switch {
+	case len(res.pdf) != 0:
+		return "pdf"
+	case len(res.img) != 0:
 		return "png"
+	default:
+		return "json"
 	}
-	return "json"
 }
 
 func (res *Result) ImgBuffer() []byte {
 	return res.img
+}
+
+func (res *Result) PDFBuffer() []byte {
+	return res.pdf
 }
 
 type QueryBlock struct {
@@ -415,6 +425,20 @@ func (r *Request) parseAction(xa Action) error {
 			return err
 		}
 		r.appendActions(outerHTML(&r.res.Out[r.pos]))
+
+	case "print_to_pdf":
+		margins := make([]float64, 4)
+		if err = xa.MustArgCount(0, 4); err != nil {
+			return err
+		}
+		for i, v := range xa.Args() {
+			if margins[i], err = strconv.ParseFloat(v, 64); err != nil {
+				msg := "print_to_pdf: expected floating point margins"
+				return fmt.Errorf("%s: %w", msg, err)
+			}
+		}
+
+		r.appendActions(printToPDF(&r.res.pdf, margins))
 
 	case "remove":
 		if len(xa.Args()) == 0 {

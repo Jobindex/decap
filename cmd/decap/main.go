@@ -105,13 +105,13 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 
 	// execute query
 
+	err_status := http.StatusInternalServerError
 	var res *decap.Result
 	res, err = dec.Execute()
 	if err != nil {
 		// TODO: Propagate HTTP status properly
-		status := http.StatusInternalServerError
-		msg := fmt.Sprintf("%s: %s", http.StatusText(status), err)
-		http.Error(w, msg, status)
+		msg := fmt.Sprintf("%s: %s", http.StatusText(err_status), err)
+		http.Error(w, msg, err_status)
 		return
 	}
 
@@ -121,21 +121,34 @@ func browseHandler(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(res)
 		if err != nil {
-			status := http.StatusInternalServerError
-			msg := fmt.Sprintf("%s: %s", http.StatusText(status), "Couldn't encode response")
-			http.Error(w, msg, status)
-			return
+			msg := fmt.Sprintf("%s: %s", http.StatusText(err_status), "Couldn't encode response")
+			http.Error(w, msg, err_status)
 		}
+		return
+	case "pdf":
+		w.Header().Set("Content-Type", "application/pdf")
+		_, err = w.Write(res.PDFBuffer())
+		if err != nil {
+			msg := fmt.Sprintf("%s: %s",
+				http.StatusText(err_status), "Couldn't write response bytes")
+			http.Error(w, msg, err_status)
+		}
+		return
 	case "png":
 		w.Header().Set("Content-Type", "image/png")
-		_, err := w.Write(res.ImgBuffer())
+		_, err = w.Write(res.ImgBuffer())
 		if err != nil {
-			status := http.StatusInternalServerError
 			msg := fmt.Sprintf("%s: %s",
-				http.StatusText(status), "Couldn't write response bytes")
-			http.Error(w, msg, status)
-			return
+				http.StatusText(err_status), "Couldn't write response bytes")
+			http.Error(w, msg, err_status)
 		}
+		return
+	default:
+		fmt.Fprintf(os.Stderr, `unknown results type "%s"`, res.Type())
+		msg := fmt.Sprintf(`%s: Unknown result type "%s"`,
+			http.StatusText(err_status), res.Type())
+		http.Error(w, msg, err_status)
+		return
 	}
 }
 

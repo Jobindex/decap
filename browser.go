@@ -282,6 +282,20 @@ func outerHTML(out *[]string) chromedp.ActionFunc {
 	}
 }
 
+func printToPDF(buf *[]byte, margins []float64) chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		if len(margins) != 4 {
+			return fmt.Errorf("expected four margins (top, right, bottom, left)")
+		}
+		var err error
+		p := page.PrintToPDF()
+		p = p.WithMarginTop(margins[0]).WithMarginBottom(margins[2])
+		p = p.WithMarginLeft(margins[3]).WithMarginRight(margins[1])
+		*buf, _, err = p.Do(ctx)
+		return err
+	}
+}
+
 func removeElements(sel string) chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		cmd := fmt.Sprintf("document.querySelectorAll('%s').forEach(e => e.remove());", sel)
